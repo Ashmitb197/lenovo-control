@@ -140,8 +140,23 @@ void HardwareBridge::setProfile(const QString &mode)
     auto *watcher = new QDBusPendingCallWatcher(
         m_interface.asyncCall("setProfile", mode), this);
 
+    const quint64 generation = m_serviceGeneration;
+
     connect(watcher, &QDBusPendingCallWatcher::finished,
-            watcher, &QObject::deleteLater);
+            this, [this, watcher, generation]() {
+        QDBusPendingReply<> reply = *watcher;
+
+        if (generation == m_serviceGeneration) {
+            if (!reply.isError()) {
+                refresh();
+            } else {
+                qWarning() << "Profile change failed:"
+                           << reply.error().message();
+            }
+        }
+
+        watcher->deleteLater();
+    });
 }
 
 void HardwareBridge::openApplication()
