@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Native Qt 6 dashboard for Lenovo Control."""
+import subprocess,sys
+from PySide6.QtCore import Qt,QTimer
+from PySide6.QtWidgets import QApplication,QWidget,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,QGroupBox,QMessageBox
+
+def command(*args):
+    return subprocess.run(['lenovo-control',*args],capture_output=True,text=True)
+
+class Window(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('Lenovo Control')
+        self.resize(490,340)
+        self.setStyleSheet('QWidget {font-size: 13px;} QGroupBox {font-weight: bold; margin-top: 10px; padding-top: 15px;} QPushButton {padding: 8px;}')
+        outer=QVBoxLayout(self)
+        title=QLabel('Lenovo Control')
+        title.setStyleSheet('font-size: 23px; font-weight: bold;')
+        outer.addWidget(title)
+        outer.addWidget(QLabel('IdeaPad power and battery dashboard'))
+        group=QGroupBox('Performance profile'); layout=QVBoxLayout(group)
+        self.profile=QLabel('Loading…');layout.addWidget(self.profile)
+        buttons=QHBoxLayout()
+        for label,mode in [('Quiet','low-power'),('Balanced','balanced'),('Performance','performance')]:
+            btn=QPushButton(label);btn.clicked.connect(lambda checked=False,m=mode:self.change('profile',m));buttons.addWidget(btn)
+        layout.addLayout(buttons);outer.addWidget(group)
+        battery=QGroupBox('Battery conservation');bl=QVBoxLayout(battery)
+        self.conservation=QLabel('Loading…');bl.addWidget(self.conservation)
+        row=QHBoxLayout()
+        for label,mode in [('Enable','on'),('Disable','off')]:
+            btn=QPushButton(label);btn.clicked.connect(lambda checked=False,m=mode:self.change('conservation',m));row.addWidget(btn)
+        bl.addLayout(row);outer.addWidget(battery)
+        self.message=QLabel('Changing settings may require administrator authentication.')
+        self.message.setWordWrap(True);outer.addWidget(self.message)
+        outer.addStretch()
+        self.timer=QTimer(self);self.timer.timeout.connect(self.refresh);self.timer.start(1500)
+        self.refresh()
+    def refresh(self):
+        r=command('status')
+        if r.returncode:
+            self.message.setText(r.stderr.strip() or 'Unable to read hardware status');return
+        values={k.strip():v.strip() for line in r.stdout.splitlines() if ':' in line for k,v in [line.split(':',1)]}
+        self.profile.setText('Current: '+values.get('Performance','unknown'))
+        state=values.get('Conservation','unsupported')
+        self.conservation.setText('Current: '+({'1':'Enabled','0':'Disabled'}.get(state,state)))
+    def change(self,operation,mode):
+        r=command(operation,mode)
+        if r.returncode:
+            QMessageBox.warning(self,'Unable to change setting',r.stderr.strip() or r.stdout.strip() or f'Exit code {r.returncode}')
+        self.refresh()
+
+if __name__=='__main__':
+    app=QApplication(sys.argv)
+    window=Window();window.show();sys.exit(app.exec())

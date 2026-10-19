@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Privileged helper; accepts only fixed operations and whitelisted sysfs paths."""
+import pathlib, sys
+PROFILE=pathlib.Path('/sys/firmware/acpi/platform_profile')
+BATTERY=[pathlib.Path('/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode'),pathlib.Path('/sys/bus/platform/devices/VPC2004:00/conservation_mode')]
+def fail(message): print(message,file=sys.stderr); sys.exit(2)
+def main():
+    if len(sys.argv)!=3: fail('Expected: profile MODE | conservation MODE')
+    operation,mode=sys.argv[1:]
+    if operation=='profile':
+        if mode not in ('low-power','balanced','performance'): fail('Invalid profile')
+        choices=pathlib.Path('/sys/firmware/acpi/platform_profile_choices')
+        if not PROFILE.exists() or not choices.exists(): fail('Platform profiles unsupported')
+        if mode not in choices.read_text().split(): fail('Profile not supported on this hardware')
+        path,value=PROFILE,mode
+    elif operation=='conservation':
+        if mode not in ('on','off','toggle'): fail('Invalid conservation operation')
+        path=next((p for p in BATTERY if p.exists()),None)
+        if path is None: fail('Conservation sysfs interface not found')
+        current=path.read_text().strip()
+        if current not in ('0','1'): fail('Unexpected conservation state')
+        value='1' if mode=='on' or (mode=='toggle' and current=='0') else '0'
+    else: fail('Unknown operation')
+    try: path.write_text(value+'\n')
+    except OSError as e: fail(str(e))
+    print(f'{operation}: {path.read_text().strip()}')
+if __name__=='__main__': main()

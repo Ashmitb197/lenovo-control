@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Lenovo Control CLI; only the narrowly scoped helper writes privileged sysfs."""
+import argparse, pathlib, subprocess, sys
+PROFILE = pathlib.Path('/sys/firmware/acpi/platform_profile')
+CONSERVATION = [pathlib.Path('/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode'), pathlib.Path('/sys/bus/platform/devices/VPC2004:00/conservation_mode')]
+
+def battery_path():
+    return next((p for p in CONSERVATION if p.exists()), None)
+
+def read(path):
+    try: return path.read_text().strip()
+    except OSError as e: return f'unavailable ({e})'
+
+def main():
+    p=argparse.ArgumentParser(description='Lenovo IdeaPad power and battery controller')
+    s=p.add_subparsers(dest='cmd',required=True)
+    s.add_parser('status'); s.add_parser('profiles'); s.add_parser('watch')
+    sp=s.add_parser('profile'); sp.add_argument('mode',choices=['low-power','balanced','performance'])
+    sb=s.add_parser('conservation'); sb.add_argument('mode',choices=['on','off','toggle','status'])
+    args=p.parse_args()
+    bp=battery_path()
+    if args.cmd=='status':
+        print('Performance:',read(PROFILE)); print('Conservation:',read(bp) if bp else 'unsupported (sysfs interface not found)'); return 0
+    if args.cmd=='profiles':
+        f=pathlib.Path('/sys/firmware/acpi/platform_profile_choices'); print(read(f)); return 0
+    if args.cmd=='watch':
+        import time
+        last=None
+        while True:
+            now=(read(PROFILE),read(bp) if bp else 'unsupported')
+            if last is not None and now!=last:
+                what='Performance: '+now[0] if now[0]!=last[0] else 'Battery conservation: '+now[1]
+                subprocess.run(['notify-send','Lenovo Control',what],check=False)
+            last=now; time.sleep(1)
+    if args.cmd=='conservation' and args.mode=='status':
+        print(read(bp) if bp else 'unsupported'); return 0 if bp else 2
+    if args.cmd=='conservation' and not bp:
+        print('Battery conservation interface not detected; refusing to change anything.',file=sys.stderr); return 2
+    action = ['profile',args.mode] if args.cmd=='profile' else ['conservation',args.mode]
+    result=subprocess.run(['pkexec','/usr/lib/lenovo-control/lenovo-control-helper',*action],check=False)
+    return result.returncode
+if __name__=='__main__': sys.exit(main())
