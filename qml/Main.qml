@@ -4,91 +4,261 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: window
-
-    width: 1060
-    height: 690
-    minimumWidth: 850
-    minimumHeight: 560
     visible: true
-
+    width: 1120
+    height: 740
+    minimumWidth: 820
+    minimumHeight: 560
     title: "Lenovo Control"
-    color: "#0d1016"
+    color: "#0c1017"
 
-    property color surface: "#171d28"
-    property color accent: "#6b9cff"
-    property color muted: "#9ca9bd"
+    readonly property color panel: "#171e29"
+    readonly property color borderColor: "#2b3545"
+    readonly property color accent: "#83aaff"
+    readonly property color foreground: "#f1f4fa"
+    readonly property color muted: "#94a2b7"
+
+    property int currentPage: 0
     property string notification: "System ready"
 
-    component StatCard: Rectangle {
+    component VectorIcon: Item {
+        id: icon
+        property string kind: "chip"
+        property color stroke: window.accent
+        implicitWidth: 22
+        implicitHeight: 22
+
+        Canvas {
+            anchors.fill: parent
+            antialiasing: true
+
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset()
+                ctx.strokeStyle = icon.stroke.toString()
+                ctx.fillStyle = icon.stroke.toString()
+                ctx.lineWidth = 1.7
+                ctx.lineCap = "round"
+                ctx.lineJoin = "round"
+
+                const sx = width / 24
+                const sy = height / 24
+                ctx.scale(sx, sy)
+
+                function line(x1,y1,x2,y2) {
+                    ctx.beginPath()
+                    ctx.moveTo(x1,y1)
+                    ctx.lineTo(x2,y2)
+                    ctx.stroke()
+                }
+
+                function rect(x,y,w,h) {
+                    ctx.strokeRect(x,y,w,h)
+                }
+
+                if (icon.kind === "chip") {
+                    rect(6,6,12,12)
+                    rect(9,9,6,6)
+                    for (let n = 8; n <= 16; n += 4) {
+                        line(n,3,n,6)
+                        line(n,18,n,21)
+                        line(3,n,6,n)
+                        line(18,n,21,n)
+                    }
+                } else if (icon.kind === "memory") {
+                    rect(3,6,18,12)
+                    for (let n = 6; n <= 18; n += 4) {
+                        line(n,3,n,6)
+                        line(n,18,n,21)
+                    }
+                    rect(7,9,10,6)
+                } else if (icon.kind === "battery") {
+                    rect(3,6,17,12)
+                    ctx.fillRect(21,10,2,4)
+                    rect(6,9,10,6)
+                } else if (icon.kind === "dashboard") {
+                    rect(3,3,8,8)
+                    rect(13,3,8,8)
+                    rect(3,13,8,8)
+                    rect(13,13,8,8)
+                } else if (icon.kind === "performance") {
+                    ctx.beginPath()
+                    ctx.moveTo(13,2)
+                    ctx.lineTo(5,13)
+                    ctx.lineTo(11,13)
+                    ctx.lineTo(10,22)
+                    ctx.lineTo(19,10)
+                    ctx.lineTo(13,10)
+                    ctx.closePath()
+                    ctx.stroke()
+                } else if (icon.kind === "check") {
+                    line(4,12,10,18)
+                    line(10,18,20,6)
+                }
+            }
+
+            Component.onCompleted: requestPaint()
+        }
+
+        onKindChanged: {
+            for (let i = 0; i < children.length; ++i)
+                if (children[i].requestPaint)
+                    children[i].requestPaint()
+        }
+    }
+
+    component NavItem: Rectangle {
+        id: nav
+        property string label: ""
+        property string iconKind: "dashboard"
+        property bool selected: false
+        signal activated()
+
+        Layout.fillWidth: true
+        implicitHeight: 48
+        radius: 11
+        color: selected ? "#253957"
+                        : area.containsMouse ? "#1b2737" : "transparent"
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 16
+            anchors.rightMargin: 12
+            spacing: 13
+
+            VectorIcon {
+                kind: nav.iconKind
+                stroke: nav.selected ? window.accent : window.muted
+                Layout.preferredWidth: 19
+                Layout.preferredHeight: 19
+            }
+
+            Text {
+                text: nav.label
+                color: nav.selected ? window.foreground : window.muted
+                font.pixelSize: 13
+                font.weight: nav.selected ? Font.DemiBold : Font.Normal
+                Layout.fillWidth: true
+            }
+        }
+
+        MouseArea {
+            id: area
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: nav.activated()
+        }
+
+        Behavior on color { ColorAnimation { duration: 140 } }
+    }
+
+    component MetricCard: Rectangle {
+        id: metric
         property string heading: ""
         property string reading: ""
-        property string description: ""
+        property string detail: ""
+        property string iconKind: "chip"
 
-        color: window.surface
-        radius: 16
-        border.color: "#293244"
-        border.width: 1
-
-        implicitHeight: 155
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        implicitHeight: 180
+        radius: 15
+        color: window.panel
+        border.color: window.borderColor
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
+            anchors.margins: 19
+            spacing: 11
 
-            Label {
-                text: heading
-                color: window.muted
-                font.pixelSize: 13
+            Rectangle {
+                width: 38
+                height: 38
+                radius: 10
+                color: "#263854"
+
+                VectorIcon {
+                    anchors.centerIn: parent
+                    kind: metric.iconKind
+                }
             }
 
-            Label {
-                text: reading
-                color: "#f1f5ff"
-                font.pixelSize: 25
-                font.bold: true
-                elide: Text.ElideRight
+            Text {
+                text: metric.heading
+                color: window.muted
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                elide: Text.ElideRight
             }
 
-            Label {
-                text: description
+            Text {
+                text: metric.reading
+                color: window.foreground
+                font.pixelSize: metric.reading.length > 15 ? 17 : 24
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+
+            Text {
+                text: metric.detail
                 color: window.muted
-                font.pixelSize: 12
+                font.pixelSize: 11
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
 
             Item { Layout.fillHeight: true }
         }
     }
 
-    component ActionButton: Button {
-        id: control
+    component ModeButton: Rectangle {
+        id: mode
+        property string label: ""
+        property string detail: ""
+        property bool selected: false
+        property bool available: true
+        signal activated()
 
-        property bool emphasized: false
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        implicitHeight: 84
+        radius: 12
+        color: selected ? "#294267" : "#202a38"
+        border.width: 1
+        border.color: selected ? window.accent : "#364457"
+        opacity: available ? 1 : 0.45
 
-        implicitHeight: 44
-        implicitWidth: 130
+        Column {
+            anchors.centerIn: parent
+            spacing: 7
 
-        contentItem: Text {
-            text: control.text
-            color: control.enabled ? "#f3f6ff" : "#697488"
-            font.pixelSize: 13
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: mode.label
+                color: window.foreground
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: mode.detail
+                color: window.muted
+                font.pixelSize: 11
+            }
         }
 
-        background: Rectangle {
-            radius: 10
-
-            color: !control.enabled ? "#252a34"
-                 : control.down ? "#365c9a"
-                 : control.hovered ? "#34496a"
-                 : control.emphasized ? "#315caa"
-                 : "#273142"
-
-            border.color: control.emphasized ? "#5989e0" : "#364358"
+        MouseArea {
+            anchors.fill: parent
+            enabled: mode.available
+            cursorShape: Qt.PointingHandCursor
+            onClicked: mode.activated()
         }
+
+        Behavior on color { ColorAnimation { duration: 150 } }
     }
 
     RowLayout {
@@ -96,42 +266,93 @@ ApplicationWindow {
         spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: 215
+            Layout.preferredWidth: 220
             Layout.fillHeight: true
-
-            color: "#141a24"
+            color: "#121923"
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 24
-                spacing: 18
+                anchors.margins: 20
+                spacing: 12
 
-                Label {
-                    text: "LENOVO\nCONTROL"
-                    color: "#f2f5fc"
-                    font.pixelSize: 21
-                    font.bold: true
+                RowLayout {
+                    spacing: 12
+
+                    Rectangle {
+                        width: 40
+                        height: 40
+                        radius: 11
+                        color: "#29466e"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "L"
+                            color: "white"
+                            font.pixelSize: 21
+                            font.bold: true
+                        }
+                    }
+
+                    Column {
+                        spacing: 3
+
+                        Text {
+                            text: "LENOVO"
+                            color: window.foreground
+                            font.pixelSize: 15
+                            font.bold: true
+                        }
+
+                        Text {
+                            text: "CONTROL"
+                            color: window.muted
+                            font.pixelSize: 10
+                            font.letterSpacing: 2
+                        }
+                    }
                 }
 
-                Label {
-                    text: "SYSTEM UTILITY"
+                Item { Layout.preferredHeight: 35 }
+
+                Text {
+                    text: "WORKSPACE"
                     color: window.muted
                     font.pixelSize: 10
-                    font.letterSpacing: 2
+                    font.letterSpacing: 1.5
                 }
 
-                Item { Layout.preferredHeight: 25 }
+                NavItem {
+                    label: "Overview"
+                    iconKind: "dashboard"
+                    selected: window.currentPage === 0
+                    onActivated: window.currentPage = 0
+                }
 
-                ActionButton {
-                    text: "Dashboard"
-                    emphasized: true
-                    Layout.fillWidth: true
+                NavItem {
+                    label: "Performance"
+                    iconKind: "performance"
+                    selected: window.currentPage === 1
+                    onActivated: window.currentPage = 1
+                }
+
+                NavItem {
+                    label: "Battery"
+                    iconKind: "battery"
+                    selected: window.currentPage === 2
+                    onActivated: window.currentPage = 2
                 }
 
                 Item { Layout.fillHeight: true }
 
-                Label {
-                    text: "v0.4.0 · Native C++"
+                Text {
+                    text: "NATIVE EDITION"
+                    color: window.accent
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+
+                Text {
+                    text: "C++20  ·  Qt 6  ·  v0.4.0"
                     color: window.muted
                     font.pixelSize: 11
                 }
@@ -139,102 +360,151 @@ ApplicationWindow {
         }
 
         ScrollView {
+            id: scroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: Math.max(0, window.width - 215 - 60)
-                x: 30
-                spacing: 22
+                // Critical fix: size against ScrollView's actual viewport,
+                // not the implicit width of the scrollable content.
+                width: scroll.availableWidth
+                spacing: 20
 
-                Item { Layout.preferredHeight: 14 }
+                Item { Layout.preferredHeight: 12 }
 
-                Label {
-                    text: "System Overview"
-                    color: "#f3f6ff"
-                    font.pixelSize: 29
-                    font.bold: true
-                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 12
 
-                Label {
-                    text: "Your hardware, performance and battery at a glance."
-                    color: window.muted
-                    font.pixelSize: 13
+                    ColumnLayout {
+                        spacing: 6
+
+                        Text {
+                            text: window.currentPage === 0 ? "System Overview"
+                                : window.currentPage === 1 ? "Performance Center"
+                                : "Battery Management"
+                            color: window.foreground
+                            font.pixelSize: 27
+                            font.weight: Font.DemiBold
+                        }
+
+                        Text {
+                            text: "Hardware control and system monitoring"
+                            color: window.muted
+                            font.pixelSize: 12
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    RowLayout {
+                        spacing: 8
+
+                        Rectangle {
+                            width: 7
+                            height: 7
+                            radius: 4
+                            color: "#61d5a3"
+                        }
+
+                        Text {
+                            text: "LIVE"
+                            color: "#83ddb7"
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                    }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
                     spacing: 14
 
-                    StatCard {
-                        Layout.fillWidth: true
+                    MetricCard {
                         heading: "CPU TEMPERATURE"
                         reading: hardware.temperature
-                        description: "Live thermal reading"
+                        detail: "Processor sensor"
+                        iconKind: "chip"
                     }
 
-                    StatCard {
-                        Layout.fillWidth: true
-                        heading: "MEMORY"
+                    MetricCard {
+                        heading: "SYSTEM MEMORY"
                         reading: hardware.memory
-                        description: "Current RAM usage"
+                        detail: "RAM usage"
+                        iconKind: "memory"
                     }
 
-                    StatCard {
-                        Layout.fillWidth: true
-                        heading: "BATTERY"
+                    MetricCard {
+                        heading: "BATTERY STATUS"
                         reading: hardware.battery
-                        description: "Current battery status"
+                        detail: "Current charge"
+                        iconKind: "battery"
                     }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: profileLayout.implicitHeight + 44
-                    color: window.surface
-                    radius: 16
-                    border.color: "#293244"
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    implicitHeight: performanceLayout.implicitHeight + 44
+                    visible: window.currentPage !== 2
+                    radius: 15
+                    color: window.panel
+                    border.color: window.borderColor
 
                     ColumnLayout {
-                        id: profileLayout
+                        id: performanceLayout
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 22
-                        spacing: 17
+                        spacing: 16
 
-                        Label {
-                            text: "Performance Profile"
-                            color: "#f2f5fc"
-                            font.pixelSize: 19
+                        Text {
+                            text: "Performance Profiles"
+                            color: window.foreground
+                            font.pixelSize: 18
                             font.bold: true
                         }
 
-                        Label {
-                            text: "Current: " + hardware.profile
+                        Text {
+                            text: "Current profile: " + hardware.profile
                             color: window.muted
+                            font.pixelSize: 12
                         }
 
                         RowLayout {
+                            Layout.fillWidth: true
                             spacing: 12
 
-                            Repeater {
-                                model: [
-                                    { label: "Quiet", mode: "low-power" },
-                                    { label: "Balanced", mode: "balanced" },
-                                    { label: "Performance", mode: "performance" }
-                                ]
+                            ModeButton {
+                                label: "Quiet"
+                                detail: "Lower power"
+                                selected: hardware.profile === "low-power"
+                                available: !hardware.busy
+                                onActivated: hardware.setProfile("low-power")
+                            }
 
-                                ActionButton {
-                                    required property var modelData
+                            ModeButton {
+                                label: "Balanced"
+                                detail: "Everyday use"
+                                selected: hardware.profile === "balanced"
+                                available: !hardware.busy
+                                onActivated: hardware.setProfile("balanced")
+                            }
 
-                                    text: modelData.label
-                                    enabled: !hardware.busy
-                                    emphasized: hardware.profile === modelData.mode
-
-                                    onClicked: hardware.setProfile(modelData.mode)
-                                }
+                            ModeButton {
+                                label: "Performance"
+                                detail: "Higher power"
+                                selected: hardware.profile === "performance"
+                                available: !hardware.busy
+                                onActivated: hardware.setProfile("performance")
                             }
                         }
                     }
@@ -242,10 +512,13 @@ ApplicationWindow {
 
                 Rectangle {
                     Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    color: window.surface
-                    radius: 16
-                    border.color: "#293244"
+                    visible: window.currentPage !== 1
+                    radius: 15
+                    color: window.panel
+                    border.color: window.borderColor
 
                     ColumnLayout {
                         id: batteryLayout
@@ -253,48 +526,61 @@ ApplicationWindow {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 22
-                        spacing: 17
+                        spacing: 16
 
-                        Label {
+                        Text {
                             text: "Battery Conservation"
-                            color: "#f2f5fc"
-                            font.pixelSize: 19
+                            color: window.foreground
+                            font.pixelSize: 18
                             font.bold: true
                         }
 
-                        Label {
-                            text: "Current: " + hardware.conservation
+                        Text {
+                            text: "Limit charging to help preserve battery health."
                             color: window.muted
+                            font.pixelSize: 12
+                        }
+
+                        Text {
+                            text: "Current state: " + hardware.conservation
+                            color: window.accent
+                            font.pixelSize: 12
                         }
 
                         RowLayout {
+                            Layout.fillWidth: true
                             spacing: 12
 
-                            ActionButton {
-                                text: "Enable"
-                                enabled: !hardware.busy
-                                emphasized: hardware.conservation === "Enabled"
-                                onClicked: hardware.setConservation(true)
+                            ModeButton {
+                                label: "Enabled"
+                                detail: "Conservation on"
+                                selected: hardware.conservation === "Enabled"
+                                available: !hardware.busy
+                                onActivated: hardware.setConservation(true)
                             }
 
-                            ActionButton {
-                                text: "Disable"
-                                enabled: !hardware.busy
-                                emphasized: hardware.conservation === "Disabled"
-                                onClicked: hardware.setConservation(false)
+                            ModeButton {
+                                label: "Disabled"
+                                detail: "Normal charging"
+                                selected: hardware.conservation === "Disabled"
+                                available: !hardware.busy
+                                onActivated: hardware.setConservation(false)
                             }
                         }
                     }
                 }
 
-                Label {
+                Text {
                     text: window.notification
                     color: window.muted
+                    font.pixelSize: 12
                     Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
                     wrapMode: Text.WordWrap
                 }
 
-                Item { Layout.preferredHeight: 20 }
+                Item { Layout.preferredHeight: 16 }
             }
         }
     }
