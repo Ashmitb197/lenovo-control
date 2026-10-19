@@ -31,6 +31,39 @@ ApplicationWindow {
     readonly property int refreshInterval: hardware.refreshInterval
     readonly property bool useFahrenheit: hardware.useFahrenheit
 
+    function readingAvailable(value) {
+        if (value === undefined || value === null)
+            return false
+
+        const text = String(value).trim()
+
+        if (text.length === 0)
+            return false
+
+        const unavailable = [
+            "not available",
+            "n/a",
+            "unknown",
+            "unsupported",
+            "unavailable",
+            "loading...",
+            "nan",
+            "[not supported]",
+            "[not available]"
+        ]
+
+        const lower = text.toLowerCase()
+
+        if (unavailable.includes(lower))
+            return false
+
+        if (lower.includes("[not supported]") ||
+            lower.includes("[not available]"))
+            return false
+
+        return true
+    }
+
     function displayTemperature(value) {
         if (!useFahrenheit || value === "Not available")
             return value
@@ -219,6 +252,8 @@ ApplicationWindow {
 
     component MetricCard: Rectangle {
         id: metric
+
+        visible: window.readingAvailable(metric.reading)
 
         property string heading: ""
         property string reading: ""
@@ -1219,14 +1254,6 @@ ApplicationWindow {
                             detail: "Configured maximum frequency"
                             iconKind: "performance"
                         }
-                    }
-
-                    Text {
-                        text: "Intel GPU utilization is not available through the detected sysfs interfaces."
-                        color: window.muted
-                        font.pixelSize: 12
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
                     }
 
                     Text {
