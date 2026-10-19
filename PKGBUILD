@@ -21,7 +21,7 @@ optdepends=(
   'plasma-workspace: KDE Plasma widget integration'
 )
 
-source=("git+https://github.com/Ashmitb197/lenovo-control.git#branch=dev/v0.4.0")
+source=("git+https://github.com/Ashmitb197/lenovo-control.git#tag=v0.4.0")
 sha256sums=('SKIP')
 
 build() {
