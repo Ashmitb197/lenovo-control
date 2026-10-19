@@ -643,7 +643,11 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: "Hardware control and system monitoring"
+                            text: window.currentPage === 0 ? "Your system at a glance"
+                                  : window.currentPage === 1 ? "Manage your laptop performance profile"
+                                  : window.currentPage === 2 ? "Battery charging and conservation settings"
+                                  : window.currentPage === 3 ? "Processor, graphics and battery information"
+                                  : "Real-time CPU, GPU and memory activity"
                             color: window.muted
                             font.pixelSize: 12
                         }
@@ -674,7 +678,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
-                    visible: window.currentPage !== 3 && window.currentPage !== 4
+                    visible: window.currentPage === 0
                     spacing: 14
 
                     MetricCard {
@@ -712,12 +716,61 @@ ApplicationWindow {
                     }
                 }
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    visible: window.currentPage === 0
+                    spacing: 14
+
+                    MetricCard {
+                        heading: "CPU UTILIZATION"
+                        reading: hardware.cpuUsage
+                        detail: "Current processor load"
+                        iconKind: "chip"
+                        percentage: parseFloat(hardware.cpuUsage)
+                    }
+
+                    MetricCard {
+                        heading: "ACTIVE PERFORMANCE MODE"
+                        reading: hardware.profile === "low-power" ? "Quiet"
+                               : hardware.profile === "balanced" ? "Balanced"
+                               : hardware.profile === "performance" ? "Performance"
+                               : hardware.profile
+                        detail: "Firmware power profile"
+                        iconKind: "performance"
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    visible: window.currentPage === 0
+                    spacing: 14
+
+                    MetricCard {
+                        heading: "INTEL GPU CLOCK"
+                        reading: hardware.intelGpuFrequency
+                        detail: "Integrated graphics"
+                        iconKind: "chip"
+                    }
+
+                    MetricCard {
+                        heading: "NVIDIA GPU USAGE"
+                        reading: hardware.gpuUsage
+                        detail: "Dedicated graphics"
+                        iconKind: "performance"
+                        percentage: parseFloat(hardware.gpuUsage)
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: performanceLayout.implicitHeight + 44
-                    visible: window.currentPage !== 2 && window.currentPage !== 3 && window.currentPage !== 4
+                    visible: window.currentPage === 1
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -782,7 +835,7 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    visible: window.currentPage !== 1 && window.currentPage !== 3 && window.currentPage !== 4
+                    visible: window.currentPage === 2
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
