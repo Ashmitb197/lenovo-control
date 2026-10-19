@@ -24,6 +24,8 @@ qt_add_executable(lenovo-control-native
     src/HardwareController.h
     src/HardwareDBus.h
     src/HardwareDBus.cpp
+    src/hardware/HardwareCapabilities.cpp
+    src/hardware/HardwareCapabilities.h
 )
 
 qt_policy(SET QTP0001 NEW)
@@ -64,6 +66,8 @@ qt_add_executable(lenovo-control-service
     src/HardwareController.h
     src/HardwareDBus.cpp
     src/HardwareDBus.h
+    src/hardware/HardwareCapabilities.cpp
+    src/hardware/HardwareCapabilities.h
 )
 
 target_link_libraries(lenovo-control-service

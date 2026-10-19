@@ -1,4 +1,5 @@
 #include "HardwareDBus.h"
+#include "hardware/HardwareCapabilities.h"
 
 HardwareDBus::HardwareDBus(HardwareController *hardware,
                            QObject *parent)
@@ -44,4 +45,19 @@ void HardwareDBus::refresh()
 void HardwareDBus::setProfile(const QString &mode)
 {
     m_hardware->setProfile(mode);
+}
+
+
+QVariantMap HardwareDBus::capabilities() const
+{
+    return {
+        {"deviceModel", HardwareCapabilities::deviceModel()},
+        {"biosVersion", HardwareCapabilities::biosVersion()},
+        {"performanceProfiles", HardwareCapabilities::performanceProfiles()},
+        {"conservationInterface", HardwareCapabilities::hasConservationMode()},
+        {"fnLockInterface", HardwareCapabilities::hasFnLock()},
+        {"fanModeInterface", HardwareCapabilities::hasFanMode()},
+        {"keyboardBacklightInterface", HardwareCapabilities::hasKeyboardBacklight()},
+        {"fanRpmMonitoring", HardwareCapabilities::hasFanRpmMonitoring()}
+    };
 }

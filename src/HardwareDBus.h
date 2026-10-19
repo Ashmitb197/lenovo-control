@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantMap>
 
 #include "HardwareController.h"
 
@@ -19,6 +20,7 @@ public slots:
     QString temperature() const;
     QString battery() const;
     QString cpuUsage() const;
+    QVariantMap capabilities() const;
     QString gpuTemperature() const;
     void refresh();
     void setProfile(const QString &mode);
