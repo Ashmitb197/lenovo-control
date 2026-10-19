@@ -503,6 +503,9 @@ void HardwareController::execute(const QStringList &arguments)
 
     connect(process, &QProcess::finished, this,
             [this, process](int exitCode, QProcess::ExitStatus status) {
+        if (m_process != process)
+            return;
+
         const bool success =
             exitCode == 0 && status == QProcess::NormalExit;
 
@@ -525,7 +528,8 @@ void HardwareController::execute(const QStringList &arguments)
 
     connect(process, &QProcess::errorOccurred, this,
             [this, process](QProcess::ProcessError error) {
-        if (error != QProcess::FailedToStart)
+        if (error != QProcess::FailedToStart ||
+            m_process != process)
             return;
 
         m_busy = false;

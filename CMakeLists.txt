@@ -185,4 +185,24 @@ if(BUILD_TESTING)
         COMMAND lenovo-control-nvidia-test
     )
 
+
+    add_executable(lenovo-control-operation-test
+        src/hardware/operation_test.cpp
+        src/HardwareController.cpp
+        src/HardwareController.h
+        src/hardware/NvidiaMetrics.cpp
+        src/hardware/NvidiaMetrics.h
+        src/hardware/HardwareCapabilities.cpp
+        src/hardware/HardwareCapabilities.h
+    )
+
+    target_link_libraries(lenovo-control-operation-test
+        PRIVATE Qt6::Core
+    )
+
+    add_test(
+        NAME operation-lifecycle
+        COMMAND lenovo-control-operation-test
+    )
+
 endif()
