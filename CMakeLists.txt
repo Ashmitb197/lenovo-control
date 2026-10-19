@@ -144,3 +144,22 @@ install(FILES
     packaging/systemd/lenovo-control-backend.service
     DESTINATION lib/systemd/user
 )
+
+# Lenovo Control v0.5.0 — hardware capability detection tests
+include(CTest)
+
+if(BUILD_TESTING)
+    add_executable(lenovo-control-capabilities-test
+        src/hardware/HardwareCapabilities.cpp
+        src/hardware/capabilities_test.cpp
+    )
+
+    target_link_libraries(lenovo-control-capabilities-test
+        PRIVATE Qt6::Core
+    )
+
+    add_test(
+        NAME hardware-capabilities
+        COMMAND lenovo-control-capabilities-test
+    )
+endif()
