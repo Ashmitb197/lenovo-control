@@ -28,6 +28,19 @@ ApplicationWindow {
         hardware.hasFanRpmMonitoring
 
 
+    readonly property bool hasIntelGraphicsReadings:
+        window.readingAvailable(hardware.intelGpuFrequency) ||
+        window.readingAvailable(hardware.intelGpuMaxFrequency)
+
+    readonly property bool hasNvidiaGraphicsReadings:
+        window.readingAvailable(hardware.gpuUsage) ||
+        window.readingAvailable(hardware.gpuTemperature) ||
+        window.readingAvailable(hardware.gpuMemory)
+
+    readonly property bool hasBatteryHealthReadings:
+        window.readingAvailable(hardware.batteryHealth) ||
+        window.readingAvailable(hardware.batteryCycles)
+
     readonly property int refreshInterval: hardware.refreshInterval
     readonly property bool useFahrenheit: hardware.useFahrenheit
 
@@ -1221,6 +1234,7 @@ ApplicationWindow {
                     }
 
                     Text {
+                        visible: window.hasIntelGraphicsReadings
                         text: "INTEL INTEGRATED GRAPHICS"
                         color: window.muted
                         font.pixelSize: 11
@@ -1229,6 +1243,7 @@ ApplicationWindow {
                     }
 
                     Text {
+                        visible: window.hasIntelGraphicsReadings
                         text: hardware.intelGpuModel
                         color: window.foreground
                         font.pixelSize: 15
@@ -1257,6 +1272,7 @@ ApplicationWindow {
                     }
 
                     Text {
+                        visible: window.hasNvidiaGraphicsReadings
                         text: "NVIDIA GRAPHICS"
                         color: window.muted
                         font.pixelSize: 11
@@ -1265,6 +1281,7 @@ ApplicationWindow {
                     }
 
                     Text {
+                        visible: window.hasNvidiaGraphicsReadings
                         text: hardware.gpuModel
                         color: window.foreground
                         font.pixelSize: 15
@@ -1301,6 +1318,7 @@ ApplicationWindow {
                     }
 
                     Text {
+                        visible: window.hasBatteryHealthReadings
                         text: "BATTERY HEALTH"
                         color: window.muted
                         font.pixelSize: 11
