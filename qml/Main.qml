@@ -19,6 +19,19 @@ ApplicationWindow {
     readonly property color muted: "#94a2b7"
 
     property int currentPage: 0
+    readonly property int refreshInterval: hardware.refreshInterval
+    readonly property bool useFahrenheit: hardware.useFahrenheit
+
+    function displayTemperature(value) {
+        if (!useFahrenheit || value === "Not available")
+            return value
+
+        const celsius = parseFloat(value)
+        if (!Number.isFinite(celsius))
+            return value
+
+        return (celsius * 9 / 5 + 32).toFixed(1) + " °F"
+    }
     property var cpuHistory: []
     property var nvidiaHistory: []
     property var intelHistory: []
@@ -27,13 +40,15 @@ ApplicationWindow {
     function appendHistory(history, value) {
         const updated = history.slice()
         updated.push(Number.isFinite(value) ? value : NaN)
-        if (updated.length > 30)
+        const maxSamples = Math.max(2, Math.ceil(60000 / window.refreshInterval))
+
+        while (updated.length > maxSamples)
             updated.shift()
         return updated
     }
 
     Timer {
-        interval: 2000
+        interval: window.refreshInterval
         running: true
         repeat: true
 
@@ -370,7 +385,8 @@ ApplicationWindow {
                     ctx.lineWidth = 2
 
                     for (let i = 0; i < values.length; i++) {
-                        const x = i * w / 29
+                        const maxSamples = Math.max(2, Math.ceil(60000 / window.refreshInterval))
+                        const x = i * w / (maxSamples - 1)
                         const value = Math.max(0, Math.min(graph.maximum, values[i]))
                         const y = h - (value / Math.max(1, graph.maximum)) * h
 
@@ -590,6 +606,13 @@ ApplicationWindow {
                     onActivated: window.currentPage = 4
                 }
 
+                NavItem {
+                    label: "Settings"
+                    iconKind: "dashboard"
+                    selected: window.currentPage === 5
+                    onActivated: window.currentPage = 5
+                }
+
                 Item { Layout.fillHeight: true }
 
                 Text {
@@ -636,7 +659,8 @@ ApplicationWindow {
                                 : window.currentPage === 1 ? "Performance Center"
                                 : window.currentPage === 2 ? "Battery Management"
                                 : window.currentPage === 3 ? "Hardware Monitoring"
-                                  : "Live Monitoring"
+                                  : window.currentPage === 4 ? "Live Monitoring"
+                                    : "Settings & Preferences"
                             color: window.foreground
                             font.pixelSize: 27
                             font.weight: Font.DemiBold
@@ -647,7 +671,8 @@ ApplicationWindow {
                                   : window.currentPage === 1 ? "Manage your laptop performance profile"
                                   : window.currentPage === 2 ? "Battery charging and conservation settings"
                                   : window.currentPage === 3 ? "Processor, graphics and battery information"
-                                  : "Real-time CPU, GPU and memory activity"
+                                  : window.currentPage === 4 ? "Real-time CPU, GPU and memory activity"
+                                    : "Customize your Lenovo Control experience"
                             color: window.muted
                             font.pixelSize: 12
                         }
@@ -683,7 +708,7 @@ ApplicationWindow {
 
                     MetricCard {
                         heading: "CPU TEMPERATURE"
-                        reading: hardware.temperature
+                        reading: window.displayTemperature(hardware.temperature)
                         detail: "Processor sensor"
                         iconKind: "chip"
                     }
@@ -1061,7 +1086,7 @@ ApplicationWindow {
 
                         MetricCard {
                             heading: "CPU TEMPERATURE"
-                            reading: hardware.temperature
+                            reading: window.displayTemperature(hardware.temperature)
                             detail: "Processor sensor"
                             iconKind: "chip"
                         }
@@ -1142,7 +1167,7 @@ ApplicationWindow {
 
                         MetricCard {
                             heading: "GPU TEMPERATURE"
-                            reading: hardware.gpuTemperature
+                            reading: window.displayTemperature(hardware.gpuTemperature)
                             detail: "NVIDIA temperature"
                             iconKind: "chip"
                         }
@@ -1182,6 +1207,79 @@ ApplicationWindow {
                             detail: "Battery cycle count"
                             iconKind: "battery"
                         }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 18
+                    visible: window.currentPage === 5
+
+                    Text {
+                        text: "MONITORING PREFERENCES"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: settingsLayout.implicitHeight + 44
+                        radius: 15
+                        color: window.panel
+                        border.color: window.borderColor
+
+                        ColumnLayout {
+                            id: settingsLayout
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 22
+                            spacing: 18
+
+                            Text {
+                                text: "Refresh Interval"
+                                color: window.foreground
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["1 second", "2 seconds", "3 seconds", "5 seconds"]
+                                currentIndex: [1000, 2000, 3000, 5000].indexOf(window.refreshInterval)
+                                onActivated: function(index) {
+                                    hardware.refreshInterval = [1000, 2000, 3000, 5000][index]
+                                }
+                            }
+
+                            Text {
+                                text: "Temperature Units"
+                                color: window.foreground
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["Celsius (°C)", "Fahrenheit (°F)"]
+                                currentIndex: window.useFahrenheit ? 1 : 0
+                                onActivated: function(index) {
+                                    hardware.useFahrenheit = index === 1
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "Preferences are saved automatically and restored when Lenovo Control starts."
+                        color: window.muted
+                        font.pixelSize: 12
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                     }
                 }
 

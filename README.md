@@ -210,6 +210,18 @@ The v0.4.0 application consists of two parts.
 
 The native application currently depends on the existing CLI for hardware-changing operations.
 
+## Settings and Preferences
+
+Lenovo Control v0.4.0 supports:
+
+- Persistent settings using Qt QSettings
+- Monitoring refresh intervals of 1, 2, 3, or 5 seconds
+- Celsius and Fahrenheit temperature display
+- Synchronized CPU, Intel GPU, NVIDIA GPU, RAM, and battery polling
+- Approximately 60 seconds of monitoring history
+
+Preferences are saved automatically and restored when the application restarts.
+
 ## Development Roadmap
 
 - [x] Python command-line utility
@@ -225,7 +237,7 @@ The native application currently depends on the existing CLI for hardware-changi
 - [x] Real-time hardware history graphs
 - [x] Dedicated live monitoring page
 - [x] Advanced battery information
-- [ ] Settings and preferences
+- [x] Settings and preferences
 - [ ] System tray integration
 - [ ] Standalone native installation package
 - [ ] Broader hardware compatibility testing

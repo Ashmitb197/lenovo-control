@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QProcess>
+#include <QTimer>
 
 class HardwareController : public QObject {
     Q_OBJECT
@@ -26,6 +27,8 @@ class HardwareController : public QObject {
     Q_PROPERTY(QString batteryCycles READ batteryCycles NOTIFY statusChanged)
     Q_PROPERTY(QString batteryFullCapacity READ batteryFullCapacity NOTIFY statusChanged)
     Q_PROPERTY(QString batteryDesignCapacity READ batteryDesignCapacity NOTIFY statusChanged)
+    Q_PROPERTY(int refreshInterval READ refreshInterval WRITE setRefreshInterval NOTIFY preferencesChanged)
+    Q_PROPERTY(bool useFahrenheit READ useFahrenheit WRITE setUseFahrenheit NOTIFY preferencesChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
 
 public:
@@ -51,6 +54,12 @@ public:
     QString batteryFullCapacity() const { return m_batteryFullCapacity; }
     QString batteryDesignCapacity() const { return m_batteryDesignCapacity; }
 
+    int refreshInterval() const { return m_refreshInterval; }
+    bool useFahrenheit() const { return m_useFahrenheit; }
+
+    void setRefreshInterval(int interval);
+    void setUseFahrenheit(bool enabled);
+
     bool busy() const { return m_busy; }
 
     Q_INVOKABLE void refresh();
@@ -58,6 +67,7 @@ public:
     Q_INVOKABLE void setConservation(bool enabled);
 
 signals:
+    void preferencesChanged();
     void statusChanged();
     void busyChanged();
     void operationFinished(bool success, const QString &message);
@@ -88,6 +98,13 @@ private:
 
     quint64 m_previousCpuTotal = 0;
     quint64 m_previousCpuIdle = 0;
+
+    int m_refreshInterval = 2000;
+    bool m_useFahrenheit = false;
+
+    QTimer *m_hardwareTimer = nullptr;
+    QTimer *m_gpuTimer = nullptr;
+    bool m_gpuQueryRunning = false;
 
     bool m_busy = false;
     QProcess *m_process = nullptr;

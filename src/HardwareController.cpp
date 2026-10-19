@@ -7,6 +7,7 @@
 #include <QProcess>
 #include <algorithm>
 #include <QPointer>
+#include <QSettings>
 
 namespace {
 
@@ -241,20 +242,33 @@ QString batteryCycleValue()
 HardwareController::HardwareController(QObject *parent)
     : QObject(parent)
 {
-    auto *timer = new QTimer(this);
+    QSettings settings("LenovoControl", "LenovoControl");
 
-    connect(timer, &QTimer::timeout,
+    const int savedInterval = settings.value("refreshInterval", 2000).toInt();
+    if (savedInterval == 1000 || savedInterval == 2000 ||
+        savedInterval == 3000 || savedInterval == 5000)
+        m_refreshInterval = savedInterval;
+
+    m_useFahrenheit = settings.value("useFahrenheit", false).toBool();
+
+    m_hardwareTimer = new QTimer(this);
+
+    connect(m_hardwareTimer, &QTimer::timeout,
             this, &HardwareController::refresh);
 
-    timer->start(2000);
+    m_hardwareTimer->start(m_refreshInterval);
 
 
     refresh();
 
-    auto *gpuTimer = new QTimer(this);
-    gpuTimer->setInterval(3000);
+    m_gpuTimer = new QTimer(this);
+    m_gpuTimer->setInterval(m_refreshInterval);
 
-    connect(gpuTimer, &QTimer::timeout, this, [this]() {
+    connect(m_gpuTimer, &QTimer::timeout, this, [this]() {
+        if (m_gpuQueryRunning)
+            return;
+
+        m_gpuQueryRunning = true;
         auto *process = new QProcess(this);
 
         process->setProgram("nvidia-smi");
@@ -282,19 +296,22 @@ HardwareController::HardwareController(QObject *parent)
                 }
             }
 
+            m_gpuQueryRunning = false;
             process->deleteLater();
         });
 
         connect(process, &QProcess::errorOccurred, process,
-                [process](QProcess::ProcessError error) {
-            if (error == QProcess::FailedToStart)
+                [this, process](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart) {
+                m_gpuQueryRunning = false;
                 process->deleteLater();
+            }
         });
 
         process->start();
     });
 
-    gpuTimer->start();
+    m_gpuTimer->start();
 }
 
 void HardwareController::refresh()
@@ -381,6 +398,42 @@ void HardwareController::refresh()
     }
 
     emit statusChanged();
+}
+
+void HardwareController::setRefreshInterval(int interval)
+{
+    if (interval != 1000 && interval != 2000 &&
+        interval != 3000 && interval != 5000)
+        return;
+
+    if (m_refreshInterval == interval)
+        return;
+
+    m_refreshInterval = interval;
+
+    if (m_hardwareTimer)
+        m_hardwareTimer->setInterval(interval);
+
+    if (m_gpuTimer)
+        m_gpuTimer->setInterval(interval);
+
+    QSettings settings("LenovoControl", "LenovoControl");
+    settings.setValue("refreshInterval", interval);
+
+    emit preferencesChanged();
+}
+
+void HardwareController::setUseFahrenheit(bool enabled)
+{
+    if (m_useFahrenheit == enabled)
+        return;
+
+    m_useFahrenheit = enabled;
+
+    QSettings settings("LenovoControl", "LenovoControl");
+    settings.setValue("useFahrenheit", enabled);
+
+    emit preferencesChanged();
 }
 
 void HardwareController::setProfile(const QString &mode)
