@@ -7,6 +7,7 @@
 #include <QProcess>
 #include <algorithm>
 #include <QPointer>
+#include <QSettings>
 
 namespace {
 
@@ -123,6 +124,49 @@ QString batteryStatus()
 
 namespace {
 
+
+QString intelGpuPath()
+{
+    const QDir directory("/sys/class/drm");
+
+    for (const QString &name :
+         directory.entryList({"card[0-9]*"}, QDir::Dirs | QDir::NoDotAndDotDot)) {
+
+        const QString path = directory.filePath(name);
+
+        if (readFile(path + "/device/vendor").toLower() == "0x8086")
+            return path;
+    }
+
+    return {};
+}
+
+QString intelGpuFrequencyValue(const QString &path, bool maximum)
+{
+    if (path.isEmpty())
+        return "Not available";
+
+    const QStringList candidates = maximum
+        ? QStringList{
+            path + "/gt_max_freq_mhz",
+            path + "/gt/gt0/rps_max_freq_mhz"
+          }
+        : QStringList{
+            path + "/gt_cur_freq_mhz",
+            path + "/gt/gt0/rps_cur_freq_mhz"
+          };
+
+    for (const QString &candidate : candidates) {
+        bool ok = false;
+        const int frequency = readFile(candidate).toInt(&ok);
+
+        if (ok && frequency >= 0)
+            return QString::number(frequency) + " MHz";
+    }
+
+    return "Not available";
+}
+
 QString cpuModelName()
 {
     const QString contents = readFile("/proc/cpuinfo");
@@ -164,6 +208,25 @@ QString batteryHealthValue()
     return QString::number(100.0 * f / d, 'f', 1) + "%";
 }
 
+QString batteryCapacityValue(bool design)
+{
+    const QString path = batteryPath();
+
+    if (path.isEmpty())
+        return "Not available";
+
+    const QString energy = readFile(
+        path + (design ? "/energy_full_design" : "/energy_full"));
+
+    bool ok = false;
+    const double microWh = energy.toDouble(&ok);
+
+    if (ok && microWh > 0)
+        return QString::number(microWh / 1000000.0, 'f', 2) + " Wh";
+
+    return "Not available";
+}
+
 QString batteryCycleValue()
 {
     const QString path = batteryPath();
@@ -179,21 +242,35 @@ QString batteryCycleValue()
 HardwareController::HardwareController(QObject *parent)
     : QObject(parent)
 {
-    auto *timer = new QTimer(this);
+    QSettings settings("LenovoControl", "LenovoControl");
 
-    connect(timer, &QTimer::timeout,
+    const int savedInterval = settings.value("refreshInterval", 2000).toInt();
+    if (savedInterval == 1000 || savedInterval == 2000 ||
+        savedInterval == 3000 || savedInterval == 5000)
+        m_refreshInterval = savedInterval;
+
+    m_useFahrenheit = settings.value("useFahrenheit", false).toBool();
+
+    m_hardwareTimer = new QTimer(this);
+
+    connect(m_hardwareTimer, &QTimer::timeout,
             this, &HardwareController::refresh);
 
-    timer->start(2000);
+    m_hardwareTimer->start(m_refreshInterval);
 
 
     refresh();
 
-    auto *gpuTimer = new QTimer(this);
-    gpuTimer->setInterval(3000);
+    m_gpuTimer = new QTimer(this);
+    m_gpuTimer->setInterval(m_refreshInterval);
 
-    connect(gpuTimer, &QTimer::timeout, this, [this]() {
+    connect(m_gpuTimer, &QTimer::timeout, this, [this]() {
+        if (m_gpuQueryRunning)
+            return;
+
+        m_gpuQueryRunning = true;
         auto *process = new QProcess(this);
+        m_gpuProcess = process;
 
         process->setProgram("nvidia-smi");
         process->setArguments({
@@ -220,27 +297,70 @@ HardwareController::HardwareController(QObject *parent)
                 }
             }
 
+            m_gpuQueryRunning = false;
+            if (m_gpuProcess == process)
+                m_gpuProcess = nullptr;
             process->deleteLater();
         });
 
         connect(process, &QProcess::errorOccurred, process,
-                [process](QProcess::ProcessError error) {
-            if (error == QProcess::FailedToStart)
+                [this, process](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart) {
+                m_gpuQueryRunning = false;
+                if (m_gpuProcess == process)
+                    m_gpuProcess = nullptr;
                 process->deleteLater();
+            }
         });
 
         process->start();
     });
 
-    gpuTimer->start();
+    m_gpuTimer->start();
+}
+
+HardwareController::~HardwareController()
+{
+    if (m_hardwareTimer)
+        m_hardwareTimer->stop();
+
+    if (m_gpuTimer)
+        m_gpuTimer->stop();
+
+    if (m_gpuProcess &&
+        m_gpuProcess->state() != QProcess::NotRunning) {
+        m_gpuProcess->terminate();
+
+        if (!m_gpuProcess->waitForFinished(1000)) {
+            m_gpuProcess->kill();
+            m_gpuProcess->waitForFinished(1000);
+        }
+    }
+
+    if (m_process &&
+        m_process->state() != QProcess::NotRunning) {
+        m_process->kill();
+        m_process->waitForFinished(1000);
+    }
 }
 
 void HardwareController::refresh()
 {
 
+    const QString intelPath = intelGpuPath();
+
+    m_intelGpuModel = intelPath.isEmpty()
+        ? "Not available"
+        : "Intel Iris Xe Graphics";
+
+    m_intelGpuFrequency = intelGpuFrequencyValue(intelPath, false);
+    m_intelGpuMaxFrequency = intelGpuFrequencyValue(intelPath, true);
+
     m_cpuModel = cpuModelName();
     m_batteryHealth = batteryHealthValue();
     m_batteryCycles = batteryCycleValue();
+    m_batteryFullCapacity = batteryCapacityValue(false);
+    m_batteryDesignCapacity = batteryCapacityValue(true);
 
     // /proc/stat counters: total time and idle time.
     {
@@ -308,6 +428,42 @@ void HardwareController::refresh()
     }
 
     emit statusChanged();
+}
+
+void HardwareController::setRefreshInterval(int interval)
+{
+    if (interval != 1000 && interval != 2000 &&
+        interval != 3000 && interval != 5000)
+        return;
+
+    if (m_refreshInterval == interval)
+        return;
+
+    m_refreshInterval = interval;
+
+    if (m_hardwareTimer)
+        m_hardwareTimer->setInterval(interval);
+
+    if (m_gpuTimer)
+        m_gpuTimer->setInterval(interval);
+
+    QSettings settings("LenovoControl", "LenovoControl");
+    settings.setValue("refreshInterval", interval);
+
+    emit preferencesChanged();
+}
+
+void HardwareController::setUseFahrenheit(bool enabled)
+{
+    if (m_useFahrenheit == enabled)
+        return;
+
+    m_useFahrenheit = enabled;
+
+    QSettings settings("LenovoControl", "LenovoControl");
+    settings.setValue("useFahrenheit", enabled);
+
+    emit preferencesChanged();
 }
 
 void HardwareController::setProfile(const QString &mode)

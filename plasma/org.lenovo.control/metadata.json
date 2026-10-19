@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "org.lenovo.control",
+        "Name": "Lenovo Control",
+        "Description": "Lenovo hardware controls and system monitoring",
+        "Icon": "computer-laptop",
+        "Category": "System Information",
+        "License": "GPL-3.0-or-later",
+        "Version": "0.4.0",
+        "EnabledByDefault": true
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -19,6 +19,60 @@ ApplicationWindow {
     readonly property color muted: "#94a2b7"
 
     property int currentPage: 0
+    readonly property int refreshInterval: hardware.refreshInterval
+    readonly property bool useFahrenheit: hardware.useFahrenheit
+
+    function displayTemperature(value) {
+        if (!useFahrenheit || value === "Not available")
+            return value
+
+        const celsius = parseFloat(value)
+        if (!Number.isFinite(celsius))
+            return value
+
+        return (celsius * 9 / 5 + 32).toFixed(1) + " °F"
+    }
+    property var cpuHistory: []
+    property var nvidiaHistory: []
+    property var intelHistory: []
+    property var ramHistory: []
+
+    function appendHistory(history, value) {
+        const updated = history.slice()
+        updated.push(Number.isFinite(value) ? value : NaN)
+        const maxSamples = Math.max(2, Math.ceil(60000 / window.refreshInterval))
+
+        while (updated.length > maxSamples)
+            updated.shift()
+        return updated
+    }
+
+    Timer {
+        interval: window.refreshInterval
+        running: true
+        repeat: true
+
+        onTriggered: {
+            window.cpuHistory = window.appendHistory(
+                window.cpuHistory, parseFloat(hardware.cpuUsage))
+
+            window.nvidiaHistory = window.appendHistory(
+                window.nvidiaHistory, parseFloat(hardware.gpuUsage))
+
+            window.intelHistory = window.appendHistory(
+                window.intelHistory, parseFloat(hardware.intelGpuFrequency))
+
+            const ram = hardware.memory.split("/")
+            const percentage = ram.length === 2 && parseFloat(ram[1]) > 0
+                ? 100 * parseFloat(ram[0]) / parseFloat(ram[1])
+                : NaN
+
+            window.ramHistory = window.appendHistory(
+                window.ramHistory, percentage)
+        }
+    }
+
+
     property string notification: "System ready"
 
     component VectorIcon: Item {
@@ -255,6 +309,115 @@ ApplicationWindow {
     }
 
 
+    component LiveGraph: Rectangle {
+        id: graph
+        property string heading: ""
+        property var samples: []
+        property real maximum: 100
+        property color graphColor: window.accent
+        property string unit: "%"
+        property string currentValue: "Not available"
+
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        implicitHeight: 205
+        radius: 15
+        color: window.panel
+        border.color: window.borderColor
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 10
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    text: graph.heading
+                    color: window.muted
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Text {
+                    text: graph.currentValue
+                    color: graph.graphColor
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+            }
+
+            Canvas {
+                id: graphCanvas
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                onPaint: {
+                    const ctx = getContext("2d")
+                    const w = width
+                    const h = height
+
+                    ctx.clearRect(0, 0, w, h)
+
+                    if (w <= 0 || h <= 0)
+                        return
+
+                    ctx.strokeStyle = "#344052"
+                    ctx.lineWidth = 1
+
+                    for (let i = 1; i <= 3; i++) {
+                        const y = h * i / 4
+                        ctx.beginPath()
+                        ctx.moveTo(0, y)
+                        ctx.lineTo(w, y)
+                        ctx.stroke()
+                    }
+
+                    const values = graph.samples
+                    if (values.length < 2)
+                        return
+
+                    ctx.beginPath()
+                    ctx.strokeStyle = graph.graphColor
+                    ctx.lineWidth = 2
+
+                    for (let i = 0; i < values.length; i++) {
+                        const maxSamples = Math.max(2, Math.ceil(60000 / window.refreshInterval))
+                        const x = i * w / (maxSamples - 1)
+                        const value = Math.max(0, Math.min(graph.maximum, values[i]))
+                        const y = h - (value / Math.max(1, graph.maximum)) * h
+
+                        if (i === 0)
+                            ctx.moveTo(x, y)
+                        else
+                            ctx.lineTo(x, y)
+                    }
+
+                    ctx.stroke()
+                }
+
+                Connections {
+                    target: graph
+                    function onSamplesChanged() {
+                        graphCanvas.requestPaint()
+                    }
+                    function onMaximumChanged() {
+                        graphCanvas.requestPaint()
+                    }
+                }
+            }
+
+            Text {
+                text: "Last 60 seconds · Updated every 2 seconds"
+                color: window.muted
+                font.pixelSize: 10
+            }
+        }
+    }
+
     component ModeButton: Rectangle {
         id: mode
 
@@ -436,6 +599,20 @@ ApplicationWindow {
                     onActivated: window.currentPage = 3
                 }
 
+                NavItem {
+                    label: "Monitoring"
+                    iconKind: "performance"
+                    selected: window.currentPage === 4
+                    onActivated: window.currentPage = 4
+                }
+
+                NavItem {
+                    label: "Settings"
+                    iconKind: "dashboard"
+                    selected: window.currentPage === 5
+                    onActivated: window.currentPage = 5
+                }
+
                 Item { Layout.fillHeight: true }
 
                 Text {
@@ -481,14 +658,21 @@ ApplicationWindow {
                             text: window.currentPage === 0 ? "System Overview"
                                 : window.currentPage === 1 ? "Performance Center"
                                 : window.currentPage === 2 ? "Battery Management"
-                                : "Hardware Monitoring"
+                                : window.currentPage === 3 ? "Hardware Monitoring"
+                                  : window.currentPage === 4 ? "Live Monitoring"
+                                    : "Settings & Preferences"
                             color: window.foreground
                             font.pixelSize: 27
                             font.weight: Font.DemiBold
                         }
 
                         Text {
-                            text: "Hardware control and system monitoring"
+                            text: window.currentPage === 0 ? "Your system at a glance"
+                                  : window.currentPage === 1 ? "Manage your laptop performance profile"
+                                  : window.currentPage === 2 ? "Battery charging and conservation settings"
+                                  : window.currentPage === 3 ? "Processor, graphics and battery information"
+                                  : window.currentPage === 4 ? "Real-time CPU, GPU and memory activity"
+                                    : "Customize your Lenovo Control experience"
                             color: window.muted
                             font.pixelSize: 12
                         }
@@ -519,12 +703,12 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
-                    visible: window.currentPage !== 3
+                    visible: window.currentPage === 0
                     spacing: 14
 
                     MetricCard {
                         heading: "CPU TEMPERATURE"
-                        reading: hardware.temperature
+                        reading: window.displayTemperature(hardware.temperature)
                         detail: "Processor sensor"
                         iconKind: "chip"
                     }
@@ -557,12 +741,61 @@ ApplicationWindow {
                     }
                 }
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    visible: window.currentPage === 0
+                    spacing: 14
+
+                    MetricCard {
+                        heading: "CPU UTILIZATION"
+                        reading: hardware.cpuUsage
+                        detail: "Current processor load"
+                        iconKind: "chip"
+                        percentage: parseFloat(hardware.cpuUsage)
+                    }
+
+                    MetricCard {
+                        heading: "ACTIVE PERFORMANCE MODE"
+                        reading: hardware.profile === "low-power" ? "Quiet"
+                               : hardware.profile === "balanced" ? "Balanced"
+                               : hardware.profile === "performance" ? "Performance"
+                               : hardware.profile
+                        detail: "Firmware power profile"
+                        iconKind: "performance"
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    visible: window.currentPage === 0
+                    spacing: 14
+
+                    MetricCard {
+                        heading: "INTEL GPU CLOCK"
+                        reading: hardware.intelGpuFrequency
+                        detail: "Integrated graphics"
+                        iconKind: "chip"
+                    }
+
+                    MetricCard {
+                        heading: "NVIDIA GPU USAGE"
+                        reading: hardware.gpuUsage
+                        detail: "Dedicated graphics"
+                        iconKind: "performance"
+                        percentage: parseFloat(hardware.gpuUsage)
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: performanceLayout.implicitHeight + 44
-                    visible: window.currentPage !== 2 && window.currentPage !== 3
+                    visible: window.currentPage === 1
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -622,12 +855,84 @@ ApplicationWindow {
                     }
                 }
 
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 14
+                    visible: window.currentPage === 2
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CURRENT CHARGE"
+                            reading: hardware.battery
+                            detail: "Battery level and charging status"
+                            iconKind: "battery"
+                            progressColor: "#65cda6"
+                            percentage: {
+                                const value = parseFloat(hardware.battery)
+                                return isNaN(value) ? -1 : value
+                            }
+                        }
+
+                        MetricCard {
+                            heading: "BATTERY HEALTH"
+                            reading: hardware.batteryHealth
+                            detail: "Remaining original capacity"
+                            iconKind: "battery"
+                            progressColor: "#65cda6"
+                            percentage: parseFloat(hardware.batteryHealth)
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CHARGE CYCLES"
+                            reading: hardware.batteryCycles
+                            detail: "Reported battery charge cycles"
+                            iconKind: "battery"
+                        }
+
+                        MetricCard {
+                            heading: "CONSERVATION MODE"
+                            reading: hardware.conservation
+                            detail: "Battery protection status"
+                            iconKind: "battery"
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "FULL-CHARGE CAPACITY"
+                            reading: hardware.batteryFullCapacity
+                            detail: "Current maximum battery capacity"
+                            iconKind: "battery"
+                        }
+
+                        MetricCard {
+                            heading: "DESIGN CAPACITY"
+                            reading: hardware.batteryDesignCapacity
+                            detail: "Original rated battery capacity"
+                            iconKind: "battery"
+                        }
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    visible: window.currentPage !== 1 && window.currentPage !== 3
+                    visible: window.currentPage === 2
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -690,6 +995,64 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     spacing: 18
+                    visible: window.currentPage === 4
+
+                    Text {
+                        text: "LIVE PERFORMANCE HISTORY"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        LiveGraph {
+                            heading: "CPU USAGE"
+                            samples: window.cpuHistory
+                            currentValue: hardware.cpuUsage
+                            graphColor: "#83aaff"
+                        }
+
+                        LiveGraph {
+                            heading: "NVIDIA GPU USAGE"
+                            samples: window.nvidiaHistory
+                            currentValue: hardware.gpuUsage
+                            graphColor: "#b49aff"
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        LiveGraph {
+                            heading: "INTEL GPU CLOCK"
+                            samples: window.intelHistory
+                            currentValue: hardware.intelGpuFrequency
+                            maximum: Math.max(1, parseFloat(hardware.intelGpuMaxFrequency) || 1300)
+                            graphColor: "#65cda6"
+                            unit: "MHz"
+                        }
+
+                        LiveGraph {
+                            heading: "RAM USAGE"
+                            samples: window.ramHistory
+                            currentValue: hardware.memory
+                            maximum: 100
+                            graphColor: "#f2bd73"
+                        }
+                    }
+
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 18
                     visible: window.currentPage === 3
 
                     Text {
@@ -723,10 +1086,54 @@ ApplicationWindow {
 
                         MetricCard {
                             heading: "CPU TEMPERATURE"
-                            reading: hardware.temperature
+                            reading: window.displayTemperature(hardware.temperature)
                             detail: "Processor sensor"
                             iconKind: "chip"
                         }
+                    }
+
+                    Text {
+                        text: "INTEL INTEGRATED GRAPHICS"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        text: hardware.intelGpuModel
+                        color: window.foreground
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CURRENT GPU CLOCK"
+                            reading: hardware.intelGpuFrequency
+                            detail: "Live Intel GPU frequency"
+                            iconKind: "chip"
+                        }
+
+                        MetricCard {
+                            heading: "MAXIMUM GPU CLOCK"
+                            reading: hardware.intelGpuMaxFrequency
+                            detail: "Configured maximum frequency"
+                            iconKind: "performance"
+                        }
+                    }
+
+                    Text {
+                        text: "Intel GPU utilization is not available through the detected sysfs interfaces."
+                        color: window.muted
+                        font.pixelSize: 12
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                     }
 
                     Text {
@@ -760,7 +1167,7 @@ ApplicationWindow {
 
                         MetricCard {
                             heading: "GPU TEMPERATURE"
-                            reading: hardware.gpuTemperature
+                            reading: window.displayTemperature(hardware.gpuTemperature)
                             detail: "NVIDIA temperature"
                             iconKind: "chip"
                         }
@@ -800,6 +1207,79 @@ ApplicationWindow {
                             detail: "Battery cycle count"
                             iconKind: "battery"
                         }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 18
+                    visible: window.currentPage === 5
+
+                    Text {
+                        text: "MONITORING PREFERENCES"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: settingsLayout.implicitHeight + 44
+                        radius: 15
+                        color: window.panel
+                        border.color: window.borderColor
+
+                        ColumnLayout {
+                            id: settingsLayout
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 22
+                            spacing: 18
+
+                            Text {
+                                text: "Refresh Interval"
+                                color: window.foreground
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["1 second", "2 seconds", "3 seconds", "5 seconds"]
+                                currentIndex: [1000, 2000, 3000, 5000].indexOf(window.refreshInterval)
+                                onActivated: function(index) {
+                                    hardware.refreshInterval = [1000, 2000, 3000, 5000][index]
+                                }
+                            }
+
+                            Text {
+                                text: "Temperature Units"
+                                color: window.foreground
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["Celsius (°C)", "Fahrenheit (°F)"]
+                                currentIndex: window.useFahrenheit ? 1 : 0
+                                onActivated: function(index) {
+                                    hardware.useFahrenheit = index === 1
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "Preferences are saved automatically and restored when Lenovo Control starts."
+                        color: window.muted
+                        font.pixelSize: 12
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                     }
                 }
 
