@@ -19,6 +19,15 @@ ApplicationWindow {
     readonly property color muted: "#94a2b7"
 
     property int currentPage: 0
+    property bool hasDetectedCapabilities:
+        hardware.availableProfiles.length > 0 ||
+        hardware.hasConservationMode ||
+        hardware.hasFnLock ||
+        hardware.hasFanMode ||
+        hardware.hasKeyboardBacklight ||
+        hardware.hasFanRpmMonitoring
+
+
     readonly property int refreshInterval: hardware.refreshInterval
     readonly property bool useFahrenheit: hardware.useFahrenheit
 
@@ -1054,6 +1063,90 @@ ApplicationWindow {
                     Layout.rightMargin: 28
                     spacing: 18
                     visible: window.currentPage === 3
+
+                    Text {
+                        text: "DEVICE INFORMATION"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    MetricCard {
+                        heading: "DEVICE MODEL"
+                        reading: hardware.deviceModel
+                        detail: "BIOS: " + hardware.biosVersion
+                        iconKind: "chip"
+                    }
+
+                    Text {
+                        visible: window.hasDetectedCapabilities
+                        text: "HARDWARE CAPABILITIES"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        visible: window.hasDetectedCapabilities
+                        columns: 2
+                        columnSpacing: 14
+                        rowSpacing: 14
+
+                        MetricCard {
+                            heading: "PERFORMANCE PROFILES"
+                            reading: hardware.availableProfiles.length + " available"
+                            detail: hardware.availableProfiles.join(", ")
+                            iconKind: "performance"
+                        }
+
+                        MetricCard {
+                            visible: hardware.hasConservationMode
+
+                            heading: "BATTERY CONSERVATION"
+                            reading: hardware.hasConservationMode ? "Detected" : "Unavailable"
+                            detail: "Firmware interface"
+                            iconKind: "battery"
+                        }
+
+                        MetricCard {
+                            visible: hardware.hasFnLock
+
+                            heading: "FN LOCK"
+                            reading: hardware.hasFnLock ? "Detected" : "Unavailable"
+                            detail: "Keyboard function lock interface"
+                            iconKind: "chip"
+                        }
+
+                        MetricCard {
+                            visible: hardware.hasFanMode
+
+                            heading: "FAN MODE"
+                            reading: hardware.hasFanMode ? "Detected" : "Unavailable"
+                            detail: "Firmware interface; control not verified"
+                            iconKind: "performance"
+                        }
+
+                        MetricCard {
+                            visible: hardware.hasKeyboardBacklight
+
+                            heading: "KEYBOARD BACKLIGHT"
+                            reading: hardware.hasKeyboardBacklight ? "Detected" : "Not detected"
+                            detail: "Linux LED interface"
+                            iconKind: "chip"
+                        }
+
+                        MetricCard {
+                            visible: hardware.hasFanRpmMonitoring
+
+                            heading: "FAN RPM MONITORING"
+                            reading: hardware.hasFanRpmMonitoring ? "Available" : "Unavailable"
+                            detail: "Linux hardware monitoring sensors"
+                            iconKind: "performance"
+                        }
+                    }
 
                     Text {
                         text: "PROCESSOR"
