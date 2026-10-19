@@ -30,6 +30,7 @@ HardwareBridge::HardwareBridge(QObject *parent)
                    const QString &,
                    const QString &newOwner) {
         ++m_serviceGeneration;
+        ++m_busyRevision;
         m_capabilitiesRequestPending = false;
         m_capabilities.clear();
 
@@ -49,8 +50,10 @@ HardwareBridge::HardwareBridge(QObject *parent)
 
         emit updated();
 
-        if (!newOwner.isEmpty())
+        if (!newOwner.isEmpty()) {
             refresh();
+            refreshBusyState();
+        }
     });
 
     auto bus = QDBusConnection::sessionBus();
@@ -73,6 +76,7 @@ HardwareBridge::HardwareBridge(QObject *parent)
 
     m_timer.start(2000);
     refresh();
+    refreshBusyState();
 }
 
 void HardwareBridge::refreshCapabilities()
@@ -190,6 +194,8 @@ void HardwareBridge::openApplication()
 
 void HardwareBridge::onOperationBusyChanged(bool busy)
 {
+    ++m_busyRevision;
+
     if (m_busy == busy)
         return;
 
@@ -200,6 +206,7 @@ void HardwareBridge::onOperationBusyChanged(bool busy)
 void HardwareBridge::onOperationFinished(
     bool success, const QString &message)
 {
+    ++m_busyRevision;
     m_busy = false;
     m_operationSucceeded = success;
     m_operationMessage = message;
@@ -207,4 +214,29 @@ void HardwareBridge::onOperationFinished(
     emit updated();
     emit operationCompleted(success, message);
     refresh();
+}
+
+
+void HardwareBridge::refreshBusyState()
+{
+    const quint64 generation = m_serviceGeneration;
+    const quint64 revision = m_busyRevision;
+
+    auto *watcher = new QDBusPendingCallWatcher(
+        m_interface.asyncCall("busy"), this);
+
+    connect(watcher, &QDBusPendingCallWatcher::finished,
+            this, [this, watcher, generation, revision]() {
+        QDBusPendingReply<bool> reply = *watcher;
+
+        if (generation == m_serviceGeneration &&
+            revision == m_busyRevision &&
+            reply.isValid() &&
+            m_busy != reply.value()) {
+            m_busy = reply.value();
+            emit updated();
+        }
+
+        watcher->deleteLater();
+    });
 }

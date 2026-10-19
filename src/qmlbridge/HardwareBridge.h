@@ -51,8 +51,10 @@ private slots:
 
 private:
     void refreshCapabilities();
+    void refreshBusyState();
 
     quint64 m_serviceGeneration = 0;
+    quint64 m_busyRevision = 0;
     bool m_capabilitiesRequestPending = false;
     QDBusInterface m_interface;
     QTimer m_timer;

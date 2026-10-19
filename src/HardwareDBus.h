@@ -15,6 +15,7 @@ public:
                           QObject *parent = nullptr);
 
 public slots:
+    bool busy() const;
     QString profile() const;
     QString conservation() const;
     QString temperature() const;

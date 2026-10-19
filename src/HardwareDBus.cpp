@@ -14,6 +14,11 @@ HardwareDBus::HardwareDBus(HardwareController *hardware,
             this, &HardwareDBus::operationFinished);
 }
 
+bool HardwareDBus::busy() const
+{
+    return m_hardware->busy();
+}
+
 QString HardwareDBus::profile() const
 {
     return m_hardware->profile();
