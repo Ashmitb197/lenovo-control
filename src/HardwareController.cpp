@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QProcess>
 #include <algorithm>
+#include <QPointer>
 
 namespace {
 
@@ -119,6 +120,62 @@ QString batteryStatus()
 
 }
 
+
+namespace {
+
+QString cpuModelName()
+{
+    const QString contents = readFile("/proc/cpuinfo");
+
+    for (const QString &line : contents.split('\n')) {
+        if (line.startsWith("model name")) {
+            const int colon = line.indexOf(':');
+            if (colon >= 0)
+                return line.mid(colon + 1).trimmed();
+        }
+    }
+
+    return "Not available";
+}
+
+QString batteryHealthValue()
+{
+    const QString path = batteryPath();
+    if (path.isEmpty())
+        return "Not available";
+
+    QString full = readFile(path + "/energy_full");
+    QString design = readFile(path + "/energy_full_design");
+
+    if (full.isEmpty() || design.isEmpty()) {
+        full = readFile(path + "/charge_full");
+        design = readFile(path + "/charge_full_design");
+    }
+
+    bool okFull = false;
+    bool okDesign = false;
+
+    const double f = full.toDouble(&okFull);
+    const double d = design.toDouble(&okDesign);
+
+    if (!okFull || !okDesign || d <= 0)
+        return "Not available";
+
+    return QString::number(100.0 * f / d, 'f', 1) + "%";
+}
+
+QString batteryCycleValue()
+{
+    const QString path = batteryPath();
+    if (path.isEmpty())
+        return "Not available";
+
+    const QString cycles = readFile(path + "/cycle_count");
+    return cycles.isEmpty() ? "Not available" : cycles;
+}
+
+}
+
 HardwareController::HardwareController(QObject *parent)
     : QObject(parent)
 {
@@ -129,11 +186,97 @@ HardwareController::HardwareController(QObject *parent)
 
     timer->start(2000);
 
+
     refresh();
+
+    auto *gpuTimer = new QTimer(this);
+    gpuTimer->setInterval(3000);
+
+    connect(gpuTimer, &QTimer::timeout, this, [this]() {
+        auto *process = new QProcess(this);
+
+        process->setProgram("nvidia-smi");
+        process->setArguments({
+            "--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total",
+            "--format=csv,noheader,nounits"
+        });
+
+        connect(process, &QProcess::finished, this,
+                [this, process](int exitCode, QProcess::ExitStatus status) {
+            if (status == QProcess::NormalExit && exitCode == 0) {
+                const QStringList values =
+                    QString::fromUtf8(process->readAllStandardOutput())
+                        .trimmed()
+                        .section('\n', 0, 0)
+                        .split(',');
+
+                if (values.size() >= 5) {
+                    m_gpuModel = values[0].trimmed();
+                    m_gpuTemperature = values[1].trimmed() + " °C";
+                    m_gpuUsage = values[2].trimmed() + "%";
+                    m_gpuMemory = values[3].trimmed() +
+                                  " / " + values[4].trimmed() + " MiB";
+                    emit statusChanged();
+                }
+            }
+
+            process->deleteLater();
+        });
+
+        connect(process, &QProcess::errorOccurred, process,
+                [process](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart)
+                process->deleteLater();
+        });
+
+        process->start();
+    });
+
+    gpuTimer->start();
 }
 
 void HardwareController::refresh()
 {
+
+    m_cpuModel = cpuModelName();
+    m_batteryHealth = batteryHealthValue();
+    m_batteryCycles = batteryCycleValue();
+
+    // /proc/stat counters: total time and idle time.
+    {
+        const QString stat = readFile("/proc/stat");
+        const QString firstLine = stat.section('\n', 0, 0);
+        const QStringList fields =
+            firstLine.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+        if (fields.size() >= 5 && fields[0] == "cpu") {
+            quint64 total = 0;
+            for (int i = 1; i < fields.size(); ++i)
+                total += fields[i].toULongLong();
+
+            const quint64 idle =
+                fields[4].toULongLong() +
+                (fields.size() > 5 ? fields[5].toULongLong() : 0);
+
+            if (m_previousCpuTotal > 0 &&
+                total > m_previousCpuTotal &&
+                idle >= m_previousCpuIdle) {
+
+                const quint64 deltaTotal = total - m_previousCpuTotal;
+                const quint64 deltaIdle = idle - m_previousCpuIdle;
+
+                const double usage =
+                    100.0 * (1.0 - double(deltaIdle) / deltaTotal);
+
+                m_cpuUsage =
+                    QString::number(std::clamp(usage, 0.0, 100.0), 'f', 1) + "%";
+            }
+
+            m_previousCpuTotal = total;
+            m_previousCpuIdle = idle;
+        }
+    }
+
     m_temperature = cpuTemperature();
     m_memory = memoryUsage();
     m_battery = batteryStatus();

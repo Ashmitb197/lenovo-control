@@ -429,6 +429,13 @@ ApplicationWindow {
                     onActivated: window.currentPage = 2
                 }
 
+                NavItem {
+                    label: "Hardware"
+                    iconKind: "chip"
+                    selected: window.currentPage === 3
+                    onActivated: window.currentPage = 3
+                }
+
                 Item { Layout.fillHeight: true }
 
                 Text {
@@ -473,7 +480,8 @@ ApplicationWindow {
                         Text {
                             text: window.currentPage === 0 ? "System Overview"
                                 : window.currentPage === 1 ? "Performance Center"
-                                : "Battery Management"
+                                : window.currentPage === 2 ? "Battery Management"
+                                : "Hardware Monitoring"
                             color: window.foreground
                             font.pixelSize: 27
                             font.weight: Font.DemiBold
@@ -511,6 +519,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
+                    visible: window.currentPage !== 3
                     spacing: 14
 
                     MetricCard {
@@ -553,7 +562,7 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: performanceLayout.implicitHeight + 44
-                    visible: window.currentPage !== 2
+                    visible: window.currentPage !== 2 && window.currentPage !== 3
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -618,7 +627,7 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    visible: window.currentPage !== 1
+                    visible: window.currentPage !== 1 && window.currentPage !== 3
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -671,6 +680,125 @@ ApplicationWindow {
                                 available: !hardware.busy
                                 onActivated: hardware.setConservation(false)
                             }
+                        }
+                    }
+                }
+
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 18
+                    visible: window.currentPage === 3
+
+                    Text {
+                        text: "PROCESSOR"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        text: hardware.cpuModel
+                        color: window.foreground
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CPU UTILIZATION"
+                            reading: hardware.cpuUsage
+                            detail: "Processor load"
+                            iconKind: "chip"
+                            percentage: parseFloat(hardware.cpuUsage)
+                        }
+
+                        MetricCard {
+                            heading: "CPU TEMPERATURE"
+                            reading: hardware.temperature
+                            detail: "Processor sensor"
+                            iconKind: "chip"
+                        }
+                    }
+
+                    Text {
+                        text: "NVIDIA GRAPHICS"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        text: hardware.gpuModel
+                        color: window.foreground
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "GPU UTILIZATION"
+                            reading: hardware.gpuUsage
+                            detail: "NVIDIA GPU load"
+                            iconKind: "performance"
+                            percentage: parseFloat(hardware.gpuUsage)
+                        }
+
+                        MetricCard {
+                            heading: "GPU TEMPERATURE"
+                            reading: hardware.gpuTemperature
+                            detail: "NVIDIA temperature"
+                            iconKind: "chip"
+                        }
+                    }
+
+                    MetricCard {
+                        heading: "VIDEO MEMORY"
+                        reading: hardware.gpuMemory
+                        detail: "Dedicated GPU memory"
+                        iconKind: "memory"
+                    }
+
+                    Text {
+                        text: "BATTERY HEALTH"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "BATTERY HEALTH"
+                            reading: hardware.batteryHealth
+                            detail: "Capacity compared with original"
+                            iconKind: "battery"
+                            progressColor: "#65cda6"
+                            percentage: parseFloat(hardware.batteryHealth)
+                        }
+
+                        MetricCard {
+                            heading: "CHARGE CYCLES"
+                            reading: hardware.batteryCycles
+                            detail: "Battery cycle count"
+                            iconKind: "battery"
                         }
                     }
                 }
