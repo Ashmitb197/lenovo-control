@@ -5,3 +5,5 @@ src/
 *.pkg.tar.*
 *.tar.gz
 *.zip
+
+/build/
