@@ -254,51 +254,98 @@ ApplicationWindow {
         }
     }
 
+
     component ModeButton: Rectangle {
         id: mode
+
         property string label: ""
         property string detail: ""
+        property string iconKind: "performance"
         property bool selected: false
         property bool available: true
+
         signal activated()
 
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        implicitHeight: 84
+        implicitHeight: 86
+
         radius: 12
-        color: selected ? "#294267" : "#202a38"
+        color: selected ? "#294267"
+             : mouse.containsMouse && available ? "#283649"
+             : "#202a38"
+
         border.width: 1
         border.color: selected ? window.accent : "#364457"
         opacity: available ? 1 : 0.45
 
-        Column {
-            anchors.centerIn: parent
-            spacing: 7
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 10
 
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: mode.label
-                color: window.foreground
-                font.pixelSize: 14
-                font.weight: Font.DemiBold
+            Rectangle {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                radius: 9
+                color: selected ? "#36598a" : "#2b394b"
+
+                VectorIcon {
+                    anchors.centerIn: parent
+                    width: 19
+                    height: 19
+                    kind: mode.iconKind
+                    stroke: selected ? "#a8c6ff" : window.muted
+                }
             }
 
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: mode.detail
-                color: window.muted
-                font.pixelSize: 11
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 5
+
+                Text {
+                    text: mode.label
+                    color: window.foreground
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    text: mode.detail
+                    color: window.muted
+                    font.pixelSize: 10
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+            }
+
+            VectorIcon {
+                visible: mode.selected
+                kind: "check"
+                stroke: window.accent
+                Layout.preferredWidth: 17
+                Layout.preferredHeight: 17
             }
         }
 
         MouseArea {
+            id: mouse
             anchors.fill: parent
             enabled: mode.available
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: mode.activated()
         }
 
-        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on color {
+            ColorAnimation { duration: 160 }
+        }
+
+        Behavior on border.color {
+            ColorAnimation { duration: 160 }
+        }
     }
 
     RowLayout {
@@ -370,7 +417,7 @@ ApplicationWindow {
 
                 NavItem {
                     label: "Performance"
-                    iconKind: "performance"
+                                iconKind: "performance"
                     selected: window.currentPage === 1
                     onActivated: window.currentPage = 1
                 }
@@ -538,6 +585,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Quiet"
+                                iconKind: "battery"
                                 detail: "Lower power"
                                 selected: hardware.profile === "low-power"
                                 available: !hardware.busy
@@ -546,6 +594,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Balanced"
+                                iconKind: "dashboard"
                                 detail: "Everyday use"
                                 selected: hardware.profile === "balanced"
                                 available: !hardware.busy
@@ -554,6 +603,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Performance"
+                                iconKind: "performance"
                                 detail: "Higher power"
                                 selected: hardware.profile === "performance"
                                 available: !hardware.busy
@@ -606,6 +656,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Enabled"
+                                iconKind: "battery"
                                 detail: "Conservation on"
                                 selected: hardware.conservation === "Enabled"
                                 available: !hardware.busy
@@ -614,6 +665,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Disabled"
+                                iconKind: "battery"
                                 detail: "Normal charging"
                                 selected: hardware.conservation === "Disabled"
                                 available: !hardware.busy
