@@ -730,6 +730,50 @@ ApplicationWindow {
                     }
 
                     Text {
+                        text: "INTEL INTEGRATED GRAPHICS"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        text: hardware.intelGpuModel
+                        color: window.foreground
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CURRENT GPU CLOCK"
+                            reading: hardware.intelGpuFrequency
+                            detail: "Live Intel GPU frequency"
+                            iconKind: "chip"
+                        }
+
+                        MetricCard {
+                            heading: "MAXIMUM GPU CLOCK"
+                            reading: hardware.intelGpuMaxFrequency
+                            detail: "Configured maximum frequency"
+                            iconKind: "performance"
+                        }
+                    }
+
+                    Text {
+                        text: "Intel GPU utilization is not available through the detected sysfs interfaces."
+                        color: window.muted
+                        font.pixelSize: 12
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Text {
                         text: "NVIDIA GRAPHICS"
                         color: window.muted
                         font.pixelSize: 11

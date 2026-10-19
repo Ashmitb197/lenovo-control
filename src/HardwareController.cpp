@@ -123,6 +123,49 @@ QString batteryStatus()
 
 namespace {
 
+
+QString intelGpuPath()
+{
+    const QDir directory("/sys/class/drm");
+
+    for (const QString &name :
+         directory.entryList({"card[0-9]*"}, QDir::Dirs | QDir::NoDotAndDotDot)) {
+
+        const QString path = directory.filePath(name);
+
+        if (readFile(path + "/device/vendor").toLower() == "0x8086")
+            return path;
+    }
+
+    return {};
+}
+
+QString intelGpuFrequencyValue(const QString &path, bool maximum)
+{
+    if (path.isEmpty())
+        return "Not available";
+
+    const QStringList candidates = maximum
+        ? QStringList{
+            path + "/gt_max_freq_mhz",
+            path + "/gt/gt0/rps_max_freq_mhz"
+          }
+        : QStringList{
+            path + "/gt_cur_freq_mhz",
+            path + "/gt/gt0/rps_cur_freq_mhz"
+          };
+
+    for (const QString &candidate : candidates) {
+        bool ok = false;
+        const int frequency = readFile(candidate).toInt(&ok);
+
+        if (ok && frequency >= 0)
+            return QString::number(frequency) + " MHz";
+    }
+
+    return "Not available";
+}
+
 QString cpuModelName()
 {
     const QString contents = readFile("/proc/cpuinfo");
@@ -237,6 +280,15 @@ HardwareController::HardwareController(QObject *parent)
 
 void HardwareController::refresh()
 {
+
+    const QString intelPath = intelGpuPath();
+
+    m_intelGpuModel = intelPath.isEmpty()
+        ? "Not available"
+        : "Intel Iris Xe Graphics";
+
+    m_intelGpuFrequency = intelGpuFrequencyValue(intelPath, false);
+    m_intelGpuMaxFrequency = intelGpuFrequencyValue(intelPath, true);
 
     m_cpuModel = cpuModelName();
     m_batteryHealth = batteryHealthValue();

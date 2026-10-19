@@ -15,6 +15,9 @@ class HardwareController : public QObject {
 
     Q_PROPERTY(QString cpuModel READ cpuModel NOTIFY statusChanged)
     Q_PROPERTY(QString cpuUsage READ cpuUsage NOTIFY statusChanged)
+    Q_PROPERTY(QString intelGpuModel READ intelGpuModel NOTIFY statusChanged)
+    Q_PROPERTY(QString intelGpuFrequency READ intelGpuFrequency NOTIFY statusChanged)
+    Q_PROPERTY(QString intelGpuMaxFrequency READ intelGpuMaxFrequency NOTIFY statusChanged)
     Q_PROPERTY(QString gpuModel READ gpuModel NOTIFY statusChanged)
     Q_PROPERTY(QString gpuTemperature READ gpuTemperature NOTIFY statusChanged)
     Q_PROPERTY(QString gpuUsage READ gpuUsage NOTIFY statusChanged)
@@ -34,6 +37,9 @@ public:
 
     QString cpuModel() const { return m_cpuModel; }
     QString cpuUsage() const { return m_cpuUsage; }
+    QString intelGpuModel() const { return m_intelGpuModel; }
+    QString intelGpuFrequency() const { return m_intelGpuFrequency; }
+    QString intelGpuMaxFrequency() const { return m_intelGpuMaxFrequency; }
     QString gpuModel() const { return m_gpuModel; }
     QString gpuTemperature() const { return m_gpuTemperature; }
     QString gpuUsage() const { return m_gpuUsage; }
@@ -64,6 +70,9 @@ private:
 
     QString m_cpuModel = "Not available";
     QString m_cpuUsage = "Not available";
+    QString m_intelGpuModel = "Not available";
+    QString m_intelGpuFrequency = "Not available";
+    QString m_intelGpuMaxFrequency = "Not available";
     QString m_gpuModel = "Not available";
     QString m_gpuTemperature = "Not available";
     QString m_gpuUsage = "Not available";

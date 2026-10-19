@@ -56,6 +56,7 @@ The Hardware page currently supports:
 | Component | Available information |
 |---|---|
 | CPU | Model, utilization, temperature |
+| Intel GPU | Iris Xe model, current and maximum clock frequencies |
 | NVIDIA GPU | Model, utilization, temperature |
 | NVIDIA VRAM | Used and total memory |
 | System RAM | Used and total memory |
@@ -69,7 +70,7 @@ NVIDIA monitoring uses `nvidia-smi` when available.
 
 Unsupported or unavailable readings are displayed as unavailable.
 
-**Note:** Intel GPU utilization monitoring is not yet implemented.
+**Note:** Intel GPU clock monitoring is implemented; Intel GPU utilization monitoring is not yet available.
 
 ## Screenshots
 
@@ -218,7 +219,8 @@ The native application currently depends on the existing CLI for hardware-changi
 - [x] CPU utilization and temperature
 - [x] NVIDIA GPU monitoring
 - [x] Battery health and charge cycles
-- [ ] Intel Iris Xe GPU monitoring
+- [x] Intel Iris Xe GPU frequency monitoring
+- [ ] Intel GPU utilization monitoring
 - [ ] Real-time hardware history graphs
 - [ ] Advanced battery information
 - [ ] Settings and preferences
@@ -230,7 +232,7 @@ The native application currently depends on the existing CLI for hardware-changi
 
 - Some functionality requires compatible Lenovo firmware and kernel drivers.
 - NVIDIA telemetry requires a working `nvidia-smi` installation.
-- Intel GPU monitoring is not yet implemented.
+- Intel GPU frequency monitoring is available on tested hardware; utilization monitoring is not yet implemented.
 - The native v0.4.0 application is still under development.
 - A standalone native installer is not yet available.
 
