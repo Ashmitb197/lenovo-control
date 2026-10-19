@@ -989,7 +989,9 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    visible: window.currentPage === 2
+                    visible: window.currentPage === 2 &&
+                             hardware.hasConservationMode &&
+                             window.readingAvailable(hardware.conservation)
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -1254,6 +1256,7 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        visible: window.hasIntelGraphicsReadings
                         spacing: 14
 
                         MetricCard {
@@ -1292,6 +1295,8 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        visible: window.readingAvailable(hardware.gpuUsage) ||
+                                 window.readingAvailable(hardware.gpuTemperature)
                         spacing: 14
 
                         MetricCard {
@@ -1328,6 +1333,7 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        visible: window.hasBatteryHealthReadings
                         spacing: 14
 
                         MetricCard {
