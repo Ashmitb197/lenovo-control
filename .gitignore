@@ -5,3 +5,9 @@ src/
 *.pkg.tar.*
 *.tar.gz
 *.zip
+
+/build/
+
+# Track native C++ source files
+!/src/
+!/src/**
