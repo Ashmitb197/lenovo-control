@@ -1,7 +1,7 @@
 pkgname=lenovo-control
-pkgver=0.4.0
+pkgver=0.5.0
 pkgrel=1
-pkgdesc='Unofficial Lenovo IdeaPad hardware controller with Qt 6 dashboard and Plasma integration'
+pkgdesc='Unofficial Lenovo laptop hardware controller with Qt 6 dashboard and Plasma integration'
 arch=('x86_64')
 url='https://github.com/Ashmitb197/lenovo-control'
 license=('MIT')
@@ -17,11 +17,11 @@ depends=(
 makedepends=('cmake' 'ninja' 'git')
 
 optdepends=(
-  'pyside6: legacy Python dashboard'
-  'plasma-workspace: KDE Plasma widget integration'
+  'plasma-workspace: KDE Plasma 6 widget integration'
+  'nvidia-utils: NVIDIA GPU monitoring'
 )
 
-source=("git+https://github.com/Ashmitb197/lenovo-control.git#tag=v0.4.0")
+source=("lenovo-control::git+https://github.com/Ashmitb197/lenovo-control.git#commit=f6af4e5348720c649544411f39a83c03b0d0be4c")
 sha256sums=('SKIP')
 
 build() {
@@ -30,28 +30,27 @@ build() {
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_TESTING=ON \
     -DLENOVO_CONTROL_TRAY=OFF \
     -DLENOVO_CONTROL_PLASMA=ON
 
-  cmake --build "$srcdir/build" -j 4
+  cmake --build "$srcdir/build" -j "$(nproc)"
+}
+
+check() {
+  ctest --test-dir "$srcdir/build" --output-on-failure
 }
 
 package() {
-  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
-
   local source_root="$srcdir/lenovo-control"
+
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
 
   install -Dm755 "$source_root/assets/lenovo-control" \
     "$pkgdir/usr/bin/lenovo-control"
 
   install -Dm755 "$source_root/assets/lenovo-control-helper" \
     "$pkgdir/usr/lib/lenovo-control/lenovo-control-helper"
-
-  install -Dm755 "$source_root/assets/lenovo-control-gui" \
-    "$pkgdir/usr/bin/lenovo-control-gui"
-
-  install -Dm644 "$source_root/assets/lenovo-control.service" \
-    "$pkgdir/usr/lib/systemd/user/lenovo-control.service"
 
   install -Dm644 "$source_root/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
