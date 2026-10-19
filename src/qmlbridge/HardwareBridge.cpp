@@ -33,6 +33,11 @@ HardwareBridge::HardwareBridge(QObject *parent)
         m_capabilitiesRequestPending = false;
         m_capabilities.clear();
 
+        // A restarted backend cannot retain an in-flight operation.
+        m_busy = false;
+        m_operationMessage.clear();
+        m_operationSucceeded = false;
+
         if (newOwner.isEmpty()) {
             m_battery = "Unavailable";
             m_temperature = "Unavailable";
@@ -47,6 +52,24 @@ HardwareBridge::HardwareBridge(QObject *parent)
         if (!newOwner.isEmpty())
             refresh();
     });
+
+    auto bus = QDBusConnection::sessionBus();
+
+    bus.connect(
+        QStringLiteral("org.lenovo.Control"),
+        QStringLiteral("/Hardware"),
+        QStringLiteral("org.lenovo.Control"),
+        QStringLiteral("operationBusyChanged"),
+        this,
+        SLOT(onOperationBusyChanged(bool)));
+
+    bus.connect(
+        QStringLiteral("org.lenovo.Control"),
+        QStringLiteral("/Hardware"),
+        QStringLiteral("org.lenovo.Control"),
+        QStringLiteral("operationFinished"),
+        this,
+        SLOT(onOperationFinished(bool,QString)));
 
     m_timer.start(2000);
     refresh();
@@ -162,4 +185,26 @@ void HardwareBridge::setProfile(const QString &mode)
 void HardwareBridge::openApplication()
 {
     QProcess::startDetached("lenovo-control-native", {});
+}
+
+
+void HardwareBridge::onOperationBusyChanged(bool busy)
+{
+    if (m_busy == busy)
+        return;
+
+    m_busy = busy;
+    emit updated();
+}
+
+void HardwareBridge::onOperationFinished(
+    bool success, const QString &message)
+{
+    m_busy = false;
+    m_operationSucceeded = success;
+    m_operationMessage = message;
+
+    emit updated();
+    emit operationCompleted(success, message);
+    refresh();
 }

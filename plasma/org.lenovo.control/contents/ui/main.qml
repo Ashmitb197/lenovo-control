@@ -100,6 +100,7 @@ PlasmoidItem {
                 visible: root.supportedProfiles.indexOf("low-power") !== -1
                 Layout.fillWidth: true
                 highlighted: hardware.profile === "low-power"
+                enabled: !hardware.busy
                 onClicked: hardware.setProfile("low-power")
             }
 
@@ -107,6 +108,7 @@ PlasmoidItem {
                 text: "Balanced"
                 visible: root.supportedProfiles.indexOf("balanced") !== -1
                 Layout.fillWidth: true
+                enabled: !hardware.busy
                 onClicked: hardware.setProfile("balanced")
                 highlighted: hardware.profile.toLowerCase() === "balanced"
             }
@@ -116,8 +118,21 @@ PlasmoidItem {
                 visible: root.supportedProfiles.indexOf("performance") !== -1
                 Layout.fillWidth: true
                 highlighted: hardware.profile === "performance"
+                enabled: !hardware.busy
                 onClicked: hardware.setProfile("performance")
             }
+        }
+
+        PlasmaComponents.Label {
+            Layout.fillWidth: true
+            visible: hardware.busy || hardware.operationMessage.length > 0
+            text: hardware.busy
+                  ? "Applying performance profile..."
+                  : hardware.operationMessage
+            wrapMode: Text.WordWrap
+            color: !hardware.busy && !hardware.operationSucceeded
+                   ? Kirigami.Theme.negativeTextColor
+                   : Kirigami.Theme.textColor
         }
 
         RowLayout {

@@ -5,6 +5,13 @@ HardwareDBus::HardwareDBus(HardwareController *hardware,
                            QObject *parent)
     : QObject(parent), m_hardware(hardware)
 {
+    connect(m_hardware, &HardwareController::busyChanged,
+            this, [this]() {
+        emit operationBusyChanged(m_hardware->busy());
+    });
+
+    connect(m_hardware, &HardwareController::operationFinished,
+            this, &HardwareDBus::operationFinished);
 }
 
 QString HardwareDBus::profile() const

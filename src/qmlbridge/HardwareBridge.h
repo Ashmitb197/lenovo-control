@@ -12,6 +12,9 @@ class HardwareBridge : public QObject
     Q_OBJECT
     QML_ELEMENT
 
+    Q_PROPERTY(bool busy READ busy NOTIFY updated)
+    Q_PROPERTY(QString operationMessage READ operationMessage NOTIFY updated)
+    Q_PROPERTY(bool operationSucceeded READ operationSucceeded NOTIFY updated)
     Q_PROPERTY(QVariantMap capabilities READ capabilities NOTIFY updated)
     Q_PROPERTY(QString battery READ battery NOTIFY updated)
     Q_PROPERTY(QString temperature READ temperature NOTIFY updated)
@@ -23,6 +26,9 @@ class HardwareBridge : public QObject
 public:
     explicit HardwareBridge(QObject *parent = nullptr);
 
+    bool busy() const { return m_busy; }
+    QString operationMessage() const { return m_operationMessage; }
+    bool operationSucceeded() const { return m_operationSucceeded; }
     QVariantMap capabilities() const { return m_capabilities; }
     QString battery() const { return m_battery; }
     QString temperature() const { return m_temperature; }
@@ -37,6 +43,11 @@ public:
 
 signals:
     void updated();
+    void operationCompleted(bool success, const QString &message);
+
+private slots:
+    void onOperationBusyChanged(bool busy);
+    void onOperationFinished(bool success, const QString &message);
 
 private:
     void refreshCapabilities();
@@ -46,6 +57,9 @@ private:
     QDBusInterface m_interface;
     QTimer m_timer;
 
+    bool m_busy = false;
+    QString m_operationMessage;
+    bool m_operationSucceeded = false;
     QVariantMap m_capabilities;
     QString m_battery = "Loading...";
     QString m_temperature = "Loading...";

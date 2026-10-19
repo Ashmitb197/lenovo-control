@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     if (!bus.registerObject(
             "/Hardware",
             &dbus,
-            QDBusConnection::ExportAllSlots)) {
+            QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals)) {
         qCritical() << "Cannot register Lenovo Control hardware object:"
                     << bus.lastError().message();
         bus.unregisterService("org.lenovo.Control");

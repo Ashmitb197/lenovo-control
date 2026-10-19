@@ -25,6 +25,10 @@ public slots:
     void refresh();
     void setProfile(const QString &mode);
 
+signals:
+    void operationBusyChanged(bool busy);
+    void operationFinished(bool success, const QString &message);
+
 private:
     HardwareController *m_hardware;
 };
