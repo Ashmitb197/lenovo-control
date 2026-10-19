@@ -2,11 +2,23 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
+#include "hardware/HardwareCapabilities.h"
 #include <QProcess>
 #include <QTimer>
 
 class HardwareController : public QObject {
     Q_OBJECT
+
+    Q_PROPERTY(bool hasConservationMode READ hasConservationMode CONSTANT)
+    Q_PROPERTY(bool hasFnLock READ hasFnLock CONSTANT)
+    Q_PROPERTY(bool hasFanMode READ hasFanMode CONSTANT)
+    Q_PROPERTY(bool hasKeyboardBacklight READ hasKeyboardBacklight CONSTANT)
+    Q_PROPERTY(bool hasFanRpmMonitoring READ hasFanRpmMonitoring CONSTANT)
+
+    Q_PROPERTY(QString deviceModel READ deviceModel CONSTANT)
+    Q_PROPERTY(QString biosVersion READ biosVersion CONSTANT)
+    Q_PROPERTY(QStringList availableProfiles READ availableProfiles CONSTANT)
 
     Q_PROPERTY(QString profile READ profile NOTIFY statusChanged)
     Q_PROPERTY(QString conservation READ conservation NOTIFY statusChanged)
@@ -34,6 +46,38 @@ class HardwareController : public QObject {
 public:
     explicit HardwareController(QObject *parent = nullptr);
     ~HardwareController() override;
+
+    bool hasConservationMode() const {
+        return HardwareCapabilities::hasConservationMode();
+    }
+
+    bool hasFnLock() const {
+        return HardwareCapabilities::hasFnLock();
+    }
+
+    bool hasFanMode() const {
+        return HardwareCapabilities::hasFanMode();
+    }
+
+    bool hasKeyboardBacklight() const {
+        return HardwareCapabilities::hasKeyboardBacklight();
+    }
+
+    bool hasFanRpmMonitoring() const {
+        return HardwareCapabilities::hasFanRpmMonitoring();
+    }
+
+    QString deviceModel() const {
+        return HardwareCapabilities::deviceModel();
+    }
+
+    QString biosVersion() const {
+        return HardwareCapabilities::biosVersion();
+    }
+
+    QStringList availableProfiles() const {
+        return HardwareCapabilities::performanceProfiles();
+    }
 
     QString profile() const { return m_profile; }
     QString conservation() const { return m_conservation; }

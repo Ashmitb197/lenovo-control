@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantMap>
 #include <QTimer>
 #include <QDBusInterface>
 #include <QtQml/qqmlregistration.h>
@@ -11,6 +12,7 @@ class HardwareBridge : public QObject
     Q_OBJECT
     QML_ELEMENT
 
+    Q_PROPERTY(QVariantMap capabilities READ capabilities NOTIFY updated)
     Q_PROPERTY(QString battery READ battery NOTIFY updated)
     Q_PROPERTY(QString temperature READ temperature NOTIFY updated)
     Q_PROPERTY(QString cpuUsage READ cpuUsage NOTIFY updated)
@@ -21,6 +23,7 @@ class HardwareBridge : public QObject
 public:
     explicit HardwareBridge(QObject *parent = nullptr);
 
+    QVariantMap capabilities() const { return m_capabilities; }
     QString battery() const { return m_battery; }
     QString temperature() const { return m_temperature; }
     QString cpuUsage() const { return m_cpuUsage; }
@@ -39,6 +42,7 @@ private:
     QDBusInterface m_interface;
     QTimer m_timer;
 
+    QVariantMap m_capabilities;
     QString m_battery = "Loading...";
     QString m_temperature = "Loading...";
     QString m_cpuUsage = "Loading...";

@@ -16,6 +16,21 @@ HardwareBridge::HardwareBridge(QObject *parent)
     connect(&m_timer, &QTimer::timeout,
             this, &HardwareBridge::refresh);
 
+    auto *capabilitiesWatcher = new QDBusPendingCallWatcher(
+        m_interface.asyncCall("capabilities"), this);
+
+    connect(capabilitiesWatcher, &QDBusPendingCallWatcher::finished,
+            this, [this, capabilitiesWatcher]() {
+        QDBusPendingReply<QVariantMap> reply = *capabilitiesWatcher;
+
+        if (reply.isValid() && m_capabilities != reply.value()) {
+            m_capabilities = reply.value();
+            emit updated();
+        }
+
+        capabilitiesWatcher->deleteLater();
+    });
+
     m_timer.start(2000);
     refresh();
 }
