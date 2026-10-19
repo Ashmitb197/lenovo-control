@@ -39,6 +39,9 @@ signals:
     void updated();
 
 private:
+    void refreshCapabilities();
+
+    bool m_capabilitiesRequestPending = false;
     QDBusInterface m_interface;
     QTimer m_timer;
 

@@ -853,7 +853,8 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: performanceLayout.implicitHeight + 44
-                    visible: window.currentPage === 1
+                    visible: window.currentPage === 1 &&
+                             hardware.availableProfiles.length > 0
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -885,6 +886,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Quiet"
+                                visible: hardware.availableProfiles.includes("low-power")
                                 iconKind: "battery"
                                 detail: "Lower power"
                                 selected: hardware.profile === "low-power"
@@ -894,6 +896,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Balanced"
+                                visible: hardware.availableProfiles.includes("balanced")
                                 iconKind: "dashboard"
                                 detail: "Everyday use"
                                 selected: hardware.profile === "balanced"
@@ -903,6 +906,7 @@ ApplicationWindow {
 
                             ModeButton {
                                 label: "Performance"
+                                visible: hardware.availableProfiles.includes("performance")
                                 iconKind: "performance"
                                 detail: "Higher power"
                                 selected: hardware.profile === "performance"

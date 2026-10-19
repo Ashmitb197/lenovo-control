@@ -8,6 +8,12 @@ import org.kde.plasma.components as PlasmaComponents
 PlasmoidItem {
     id: root
 
+    readonly property var supportedProfiles:
+        hardware.capabilities.performanceProfiles || []
+
+    readonly property bool supportsConservation:
+        hardware.capabilities.conservationInterface === true
+
     preferredRepresentation: compactRepresentation
 
     HardwareBridge {
@@ -78,13 +84,16 @@ PlasmoidItem {
         PlasmaComponents.Label {
             text: "Performance Profile"
             font.bold: true
+            visible: root.supportedProfiles.length > 0
         }
 
         RowLayout {
             Layout.fillWidth: true
+            visible: root.supportedProfiles.length > 0
 
             PlasmaComponents.Button {
                 text: "Quiet"
+                visible: root.supportedProfiles.indexOf("low-power") !== -1
                 Layout.fillWidth: true
                 highlighted: hardware.profile === "low-power"
                 onClicked: hardware.setProfile("low-power")
@@ -92,6 +101,7 @@ PlasmoidItem {
 
             PlasmaComponents.Button {
                 text: "Balanced"
+                visible: root.supportedProfiles.indexOf("balanced") !== -1
                 Layout.fillWidth: true
                 onClicked: hardware.setProfile("balanced")
                 highlighted: hardware.profile.toLowerCase() === "balanced"
@@ -99,6 +109,7 @@ PlasmoidItem {
 
             PlasmaComponents.Button {
                 text: "Performance"
+                visible: root.supportedProfiles.indexOf("performance") !== -1
                 Layout.fillWidth: true
                 highlighted: hardware.profile === "performance"
                 onClicked: hardware.setProfile("performance")
@@ -107,6 +118,7 @@ PlasmoidItem {
 
         RowLayout {
             Layout.fillWidth: true
+            visible: root.supportsConservation
 
             PlasmaComponents.Label {
                 text: "Battery Conservation"

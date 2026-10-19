@@ -16,27 +16,39 @@ HardwareBridge::HardwareBridge(QObject *parent)
     connect(&m_timer, &QTimer::timeout,
             this, &HardwareBridge::refresh);
 
-    auto *capabilitiesWatcher = new QDBusPendingCallWatcher(
-        m_interface.asyncCall("capabilities"), this);
-
-    connect(capabilitiesWatcher, &QDBusPendingCallWatcher::finished,
-            this, [this, capabilitiesWatcher]() {
-        QDBusPendingReply<QVariantMap> reply = *capabilitiesWatcher;
-
-        if (reply.isValid() && m_capabilities != reply.value()) {
-            m_capabilities = reply.value();
-            emit updated();
-        }
-
-        capabilitiesWatcher->deleteLater();
-    });
-
     m_timer.start(2000);
     refresh();
 }
 
+void HardwareBridge::refreshCapabilities()
+{
+    if (m_capabilitiesRequestPending || !m_capabilities.isEmpty())
+        return;
+
+    m_capabilitiesRequestPending = true;
+
+    auto *watcher = new QDBusPendingCallWatcher(
+        m_interface.asyncCall("capabilities"), this);
+
+    connect(watcher, &QDBusPendingCallWatcher::finished,
+            this, [this, watcher]() {
+        m_capabilitiesRequestPending = false;
+
+        QDBusPendingReply<QVariantMap> reply = *watcher;
+
+        if (reply.isValid() && !reply.value().isEmpty() &&
+            m_capabilities != reply.value()) {
+            m_capabilities = reply.value();
+            emit updated();
+        }
+
+        watcher->deleteLater();
+    });
+}
+
 void HardwareBridge::refresh()
 {
+    refreshCapabilities();
     struct Reading {
         const char *method;
         QString HardwareBridge::*member;
