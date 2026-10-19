@@ -24,6 +24,8 @@ class HardwareController : public QObject {
     Q_PROPERTY(QString gpuMemory READ gpuMemory NOTIFY statusChanged)
     Q_PROPERTY(QString batteryHealth READ batteryHealth NOTIFY statusChanged)
     Q_PROPERTY(QString batteryCycles READ batteryCycles NOTIFY statusChanged)
+    Q_PROPERTY(QString batteryFullCapacity READ batteryFullCapacity NOTIFY statusChanged)
+    Q_PROPERTY(QString batteryDesignCapacity READ batteryDesignCapacity NOTIFY statusChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
 
 public:
@@ -46,6 +48,8 @@ public:
     QString gpuMemory() const { return m_gpuMemory; }
     QString batteryHealth() const { return m_batteryHealth; }
     QString batteryCycles() const { return m_batteryCycles; }
+    QString batteryFullCapacity() const { return m_batteryFullCapacity; }
+    QString batteryDesignCapacity() const { return m_batteryDesignCapacity; }
 
     bool busy() const { return m_busy; }
 
@@ -79,6 +83,8 @@ private:
     QString m_gpuMemory = "Not available";
     QString m_batteryHealth = "Not available";
     QString m_batteryCycles = "Not available";
+    QString m_batteryFullCapacity = "Not available";
+    QString m_batteryDesignCapacity = "Not available";
 
     quint64 m_previousCpuTotal = 0;
     quint64 m_previousCpuIdle = 0;

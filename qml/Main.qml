@@ -830,6 +830,78 @@ ApplicationWindow {
                     }
                 }
 
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 14
+                    visible: window.currentPage === 2
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CURRENT CHARGE"
+                            reading: hardware.battery
+                            detail: "Battery level and charging status"
+                            iconKind: "battery"
+                            progressColor: "#65cda6"
+                            percentage: {
+                                const value = parseFloat(hardware.battery)
+                                return isNaN(value) ? -1 : value
+                            }
+                        }
+
+                        MetricCard {
+                            heading: "BATTERY HEALTH"
+                            reading: hardware.batteryHealth
+                            detail: "Remaining original capacity"
+                            iconKind: "battery"
+                            progressColor: "#65cda6"
+                            percentage: parseFloat(hardware.batteryHealth)
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "CHARGE CYCLES"
+                            reading: hardware.batteryCycles
+                            detail: "Reported battery charge cycles"
+                            iconKind: "battery"
+                        }
+
+                        MetricCard {
+                            heading: "CONSERVATION MODE"
+                            reading: hardware.conservation
+                            detail: "Battery protection status"
+                            iconKind: "battery"
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        MetricCard {
+                            heading: "FULL-CHARGE CAPACITY"
+                            reading: hardware.batteryFullCapacity
+                            detail: "Current maximum battery capacity"
+                            iconKind: "battery"
+                        }
+
+                        MetricCard {
+                            heading: "DESIGN CAPACITY"
+                            reading: hardware.batteryDesignCapacity
+                            detail: "Original rated battery capacity"
+                            iconKind: "battery"
+                        }
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28

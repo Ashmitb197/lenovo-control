@@ -62,6 +62,7 @@ The Hardware page currently supports:
 | System RAM | Used and total memory |
 | Battery | Charge percentage and charging status |
 | Battery Health | Full-charge capacity compared with design capacity |
+| Battery Capacity | Full-charge and original design capacity in Wh |
 | Battery Cycles | Reported charge cycle count |
 
 Hardware information is read from Linux system interfaces such as `/proc` and `/sys`.
@@ -223,7 +224,7 @@ The native application currently depends on the existing CLI for hardware-changi
 - [ ] Intel GPU utilization monitoring
 - [x] Real-time hardware history graphs
 - [x] Dedicated live monitoring page
-- [ ] Advanced battery information
+- [x] Advanced battery information
 - [ ] Settings and preferences
 - [ ] System tray integration
 - [ ] Standalone native installation package

@@ -207,6 +207,25 @@ QString batteryHealthValue()
     return QString::number(100.0 * f / d, 'f', 1) + "%";
 }
 
+QString batteryCapacityValue(bool design)
+{
+    const QString path = batteryPath();
+
+    if (path.isEmpty())
+        return "Not available";
+
+    const QString energy = readFile(
+        path + (design ? "/energy_full_design" : "/energy_full"));
+
+    bool ok = false;
+    const double microWh = energy.toDouble(&ok);
+
+    if (ok && microWh > 0)
+        return QString::number(microWh / 1000000.0, 'f', 2) + " Wh";
+
+    return "Not available";
+}
+
 QString batteryCycleValue()
 {
     const QString path = batteryPath();
@@ -293,6 +312,8 @@ void HardwareController::refresh()
     m_cpuModel = cpuModelName();
     m_batteryHealth = batteryHealthValue();
     m_batteryCycles = batteryCycleValue();
+    m_batteryFullCapacity = batteryCapacityValue(false);
+    m_batteryDesignCapacity = batteryCapacityValue(true);
 
     // /proc/stat counters: total time and idle time.
     {
