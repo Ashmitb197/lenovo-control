@@ -1,6 +1,7 @@
 #include "HardwareBridge.h"
 
 #include <QDBusConnection>
+#include <QDBusServiceWatcher>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QProcess>
@@ -16,6 +17,37 @@ HardwareBridge::HardwareBridge(QObject *parent)
     connect(&m_timer, &QTimer::timeout,
             this, &HardwareBridge::refresh);
 
+    auto *serviceWatcher = new QDBusServiceWatcher(
+        QStringLiteral("org.lenovo.Control"),
+        QDBusConnection::sessionBus(),
+        QDBusServiceWatcher::WatchForOwnerChange,
+        this);
+
+    connect(serviceWatcher,
+            &QDBusServiceWatcher::serviceOwnerChanged,
+            this,
+            [this](const QString &,
+                   const QString &,
+                   const QString &newOwner) {
+        ++m_serviceGeneration;
+        m_capabilitiesRequestPending = false;
+        m_capabilities.clear();
+
+        if (newOwner.isEmpty()) {
+            m_battery = "Unavailable";
+            m_temperature = "Unavailable";
+            m_cpuUsage = "Unavailable";
+            m_profile = "Unavailable";
+            m_conservation = "Unavailable";
+            m_gpuTemperature = "Unavailable";
+        }
+
+        emit updated();
+
+        if (!newOwner.isEmpty())
+            refresh();
+    });
+
     m_timer.start(2000);
     refresh();
 }
@@ -26,12 +58,18 @@ void HardwareBridge::refreshCapabilities()
         return;
 
     m_capabilitiesRequestPending = true;
+    const quint64 generation = m_serviceGeneration;
 
     auto *watcher = new QDBusPendingCallWatcher(
         m_interface.asyncCall("capabilities"), this);
 
     connect(watcher, &QDBusPendingCallWatcher::finished,
-            this, [this, watcher]() {
+            this, [this, watcher, generation]() {
+        if (generation != m_serviceGeneration) {
+            watcher->deleteLater();
+            return;
+        }
+
         m_capabilitiesRequestPending = false;
 
         QDBusPendingReply<QVariantMap> reply = *watcher;
@@ -63,12 +101,19 @@ void HardwareBridge::refresh()
         {"gpuTemperature", &HardwareBridge::m_gpuTemperature}
     };
 
+    const quint64 generation = m_serviceGeneration;
+
     for (const auto &reading : readings) {
         auto *watcher = new QDBusPendingCallWatcher(
             m_interface.asyncCall(reading.method), this);
 
         connect(watcher, &QDBusPendingCallWatcher::finished,
-                this, [this, watcher, reading]() {
+                this, [this, watcher, reading, generation]() {
+            if (generation != m_serviceGeneration) {
+                watcher->deleteLater();
+                return;
+            }
+
             QDBusPendingReply<QString> reply = *watcher;
 
             const QString value = reply.isValid()

@@ -41,6 +41,7 @@ signals:
 private:
     void refreshCapabilities();
 
+    quint64 m_serviceGeneration = 0;
     bool m_capabilitiesRequestPending = false;
     QDBusInterface m_interface;
     QTimer m_timer;
