@@ -153,34 +153,51 @@ ApplicationWindow {
         Behavior on color { ColorAnimation { duration: 140 } }
     }
 
+
     component MetricCard: Rectangle {
         id: metric
+
         property string heading: ""
         property string reading: ""
         property string detail: ""
         property string iconKind: "chip"
+        property real percentage: -1
+        property color progressColor: window.accent
 
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        implicitHeight: 180
+        implicitHeight: 166
         radius: 15
         color: window.panel
         border.color: window.borderColor
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 19
-            spacing: 11
+            anchors.margins: 18
+            spacing: 9
 
-            Rectangle {
-                width: 38
-                height: 38
-                radius: 10
-                color: "#263854"
+            RowLayout {
+                Layout.fillWidth: true
 
-                VectorIcon {
-                    anchors.centerIn: parent
-                    kind: metric.iconKind
+                Rectangle {
+                    width: 36
+                    height: 36
+                    radius: 10
+                    color: "#263854"
+
+                    VectorIcon {
+                        anchors.centerIn: parent
+                        kind: metric.iconKind
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    width: 6
+                    height: 6
+                    radius: 3
+                    color: metric.progressColor
                 }
             }
 
@@ -196,10 +213,33 @@ ApplicationWindow {
             Text {
                 text: metric.reading
                 color: window.foreground
-                font.pixelSize: metric.reading.length > 15 ? 17 : 24
+                font.pixelSize: metric.reading.length > 15 ? 17 : 23
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
                 elide: Text.ElideRight
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 5
+                radius: 3
+                color: "#303b4c"
+                visible: metric.percentage >= 0
+
+                Rectangle {
+                    width: parent.width *
+                        Math.max(0, Math.min(100, metric.percentage)) / 100
+                    height: parent.height
+                    radius: parent.radius
+                    color: metric.progressColor
+
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 350
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
             }
 
             Text {
@@ -435,6 +475,14 @@ ApplicationWindow {
 
                     MetricCard {
                         heading: "SYSTEM MEMORY"
+                        percentage: {
+                            const parts = hardware.memory.split(" / ")
+                            if (parts.length !== 2)
+                                return -1
+                            const used = parseFloat(parts[0])
+                            const total = parseFloat(parts[1])
+                            return total > 0 ? 100 * used / total : -1
+                        }
                         reading: hardware.memory
                         detail: "RAM usage"
                         iconKind: "memory"
@@ -442,6 +490,11 @@ ApplicationWindow {
 
                     MetricCard {
                         heading: "BATTERY STATUS"
+                        progressColor: "#65cda6"
+                        percentage: {
+                            const value = parseFloat(hardware.battery)
+                            return isNaN(value) ? -1 : value
+                        }
                         reading: hardware.battery
                         detail: "Current charge"
                         iconKind: "battery"
