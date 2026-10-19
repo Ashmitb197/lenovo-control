@@ -196,7 +196,12 @@ void HardwareBridge::onOperationBusyChanged(bool busy)
 {
     ++m_busyRevision;
 
-    if (m_busy == busy)
+    if (busy) {
+        m_operationMessage.clear();
+        m_operationSucceeded = false;
+    }
+
+    if (m_busy == busy && !busy)
         return;
 
     m_busy = busy;
@@ -234,6 +239,12 @@ void HardwareBridge::refreshBusyState()
             reply.isValid() &&
             m_busy != reply.value()) {
             m_busy = reply.value();
+
+            if (m_busy) {
+                m_operationMessage.clear();
+                m_operationSucceeded = false;
+            }
+
             emit updated();
         }
 
