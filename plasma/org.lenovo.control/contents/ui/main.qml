@@ -9,10 +9,14 @@ PlasmoidItem {
     id: root
 
     readonly property var supportedProfiles:
-        hardware.capabilities.performanceProfiles || []
+        (hardware && hardware.capabilities)
+            ? (hardware.capabilities.performanceProfiles || [])
+            : []
 
     readonly property bool supportsConservation:
-        hardware.capabilities.conservationInterface === true
+        hardware && hardware.capabilities
+            ? hardware.capabilities.conservationInterface === true
+            : false
 
     preferredRepresentation: compactRepresentation
 
