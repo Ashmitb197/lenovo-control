@@ -19,6 +19,8 @@ endif()
 qt_standard_project_setup(REQUIRES 6.4)
 
 qt_add_executable(lenovo-control-native
+    src/hardware/NvidiaMetrics.cpp
+    src/hardware/NvidiaMetrics.h
     src/main.cpp
     src/HardwareController.cpp
     src/HardwareController.h
@@ -61,6 +63,8 @@ endif()
 
 # Independent D-Bus hardware monitoring service
 qt_add_executable(lenovo-control-service
+    src/hardware/NvidiaMetrics.cpp
+    src/hardware/NvidiaMetrics.h
     src/service_main.cpp
     src/HardwareController.cpp
     src/HardwareController.h
@@ -166,4 +170,19 @@ if(BUILD_TESTING)
         NAME hardware-capabilities
         COMMAND lenovo-control-capabilities-test
     )
+
+    add_executable(lenovo-control-nvidia-test
+        src/hardware/NvidiaMetrics.cpp
+        src/hardware/nvidia_metrics_test.cpp
+    )
+
+    target_link_libraries(lenovo-control-nvidia-test
+        PRIVATE Qt6::Core
+    )
+
+    add_test(
+        NAME nvidia-metrics
+        COMMAND lenovo-control-nvidia-test
+    )
+
 endif()

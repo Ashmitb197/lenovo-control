@@ -1,3 +1,5 @@
+#include "hardware/NvidiaMetrics.h"
+#include <cmath>
 #include "HardwareController.h"
 
 #include <QFile>
@@ -280,24 +282,25 @@ HardwareController::HardwareController(QObject *parent)
 
         connect(process, &QProcess::finished, this,
                 [this, process](int exitCode, QProcess::ExitStatus status) {
-            if (status == QProcess::NormalExit && exitCode == 0) {
-                const QStringList values =
-                    QString::fromUtf8(process->readAllStandardOutput())
-                        .trimmed()
-                        .section('\n', 0, 0)
-                        .split(',');
+            // Reset readings when the NVIDIA query fails.
+           m_gpuModel = "Not available";
+           m_gpuTemperature = "Not available";
+           m_gpuUsage = "Not available";
+           m_gpuMemory = "Not available";
 
-                if (values.size() >= 5) {
-                    m_gpuModel = values[0].trimmed();
-                    m_gpuTemperature = values[1].trimmed() + " °C";
-                    m_gpuUsage = values[2].trimmed() + "%";
-                    m_gpuMemory = values[3].trimmed() +
-                                  " / " + values[4].trimmed() + " MiB";
-                    emit statusChanged();
-                }
-            }
+           if (status == QProcess::NormalExit && exitCode == 0) {
+               const NvidiaMetrics metrics = parseNvidiaMetrics(
+                   QString::fromUtf8(process->readAllStandardOutput()));
 
-            m_gpuQueryRunning = false;
+               m_gpuModel = metrics.model;
+               m_gpuTemperature = metrics.temperature;
+               m_gpuUsage = metrics.usage;
+               m_gpuMemory = metrics.memory;
+           }
+
+           emit statusChanged();
+
+           m_gpuQueryRunning = false;
             if (m_gpuProcess == process)
                 m_gpuProcess = nullptr;
             process->deleteLater();
@@ -306,6 +309,12 @@ HardwareController::HardwareController(QObject *parent)
         connect(process, &QProcess::errorOccurred, process,
                 [this, process](QProcess::ProcessError error) {
             if (error == QProcess::FailedToStart) {
+                m_gpuModel = "Not available";
+                m_gpuTemperature = "Not available";
+                m_gpuUsage = "Not available";
+                m_gpuMemory = "Not available";
+                emit statusChanged();
+
                 m_gpuQueryRunning = false;
                 if (m_gpuProcess == process)
                     m_gpuProcess = nullptr;
