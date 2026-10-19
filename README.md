@@ -221,7 +221,8 @@ The native application currently depends on the existing CLI for hardware-changi
 - [x] Battery health and charge cycles
 - [x] Intel Iris Xe GPU frequency monitoring
 - [ ] Intel GPU utilization monitoring
-- [ ] Real-time hardware history graphs
+- [x] Real-time hardware history graphs
+- [x] Dedicated live monitoring page
 - [ ] Advanced battery information
 - [ ] Settings and preferences
 - [ ] System tray integration

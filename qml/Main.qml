@@ -19,6 +19,45 @@ ApplicationWindow {
     readonly property color muted: "#94a2b7"
 
     property int currentPage: 0
+    property var cpuHistory: []
+    property var nvidiaHistory: []
+    property var intelHistory: []
+    property var ramHistory: []
+
+    function appendHistory(history, value) {
+        const updated = history.slice()
+        updated.push(Number.isFinite(value) ? value : NaN)
+        if (updated.length > 30)
+            updated.shift()
+        return updated
+    }
+
+    Timer {
+        interval: 2000
+        running: true
+        repeat: true
+
+        onTriggered: {
+            window.cpuHistory = window.appendHistory(
+                window.cpuHistory, parseFloat(hardware.cpuUsage))
+
+            window.nvidiaHistory = window.appendHistory(
+                window.nvidiaHistory, parseFloat(hardware.gpuUsage))
+
+            window.intelHistory = window.appendHistory(
+                window.intelHistory, parseFloat(hardware.intelGpuFrequency))
+
+            const ram = hardware.memory.split("/")
+            const percentage = ram.length === 2 && parseFloat(ram[1]) > 0
+                ? 100 * parseFloat(ram[0]) / parseFloat(ram[1])
+                : NaN
+
+            window.ramHistory = window.appendHistory(
+                window.ramHistory, percentage)
+        }
+    }
+
+
     property string notification: "System ready"
 
     component VectorIcon: Item {
@@ -255,6 +294,114 @@ ApplicationWindow {
     }
 
 
+    component LiveGraph: Rectangle {
+        id: graph
+        property string heading: ""
+        property var samples: []
+        property real maximum: 100
+        property color graphColor: window.accent
+        property string unit: "%"
+        property string currentValue: "Not available"
+
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        implicitHeight: 205
+        radius: 15
+        color: window.panel
+        border.color: window.borderColor
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 10
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Text {
+                    text: graph.heading
+                    color: window.muted
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Text {
+                    text: graph.currentValue
+                    color: graph.graphColor
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+            }
+
+            Canvas {
+                id: graphCanvas
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                onPaint: {
+                    const ctx = getContext("2d")
+                    const w = width
+                    const h = height
+
+                    ctx.clearRect(0, 0, w, h)
+
+                    if (w <= 0 || h <= 0)
+                        return
+
+                    ctx.strokeStyle = "#344052"
+                    ctx.lineWidth = 1
+
+                    for (let i = 1; i <= 3; i++) {
+                        const y = h * i / 4
+                        ctx.beginPath()
+                        ctx.moveTo(0, y)
+                        ctx.lineTo(w, y)
+                        ctx.stroke()
+                    }
+
+                    const values = graph.samples
+                    if (values.length < 2)
+                        return
+
+                    ctx.beginPath()
+                    ctx.strokeStyle = graph.graphColor
+                    ctx.lineWidth = 2
+
+                    for (let i = 0; i < values.length; i++) {
+                        const x = i * w / 29
+                        const value = Math.max(0, Math.min(graph.maximum, values[i]))
+                        const y = h - (value / Math.max(1, graph.maximum)) * h
+
+                        if (i === 0)
+                            ctx.moveTo(x, y)
+                        else
+                            ctx.lineTo(x, y)
+                    }
+
+                    ctx.stroke()
+                }
+
+                Connections {
+                    target: graph
+                    function onSamplesChanged() {
+                        graphCanvas.requestPaint()
+                    }
+                    function onMaximumChanged() {
+                        graphCanvas.requestPaint()
+                    }
+                }
+            }
+
+            Text {
+                text: "Last 60 seconds · Updated every 2 seconds"
+                color: window.muted
+                font.pixelSize: 10
+            }
+        }
+    }
+
     component ModeButton: Rectangle {
         id: mode
 
@@ -436,6 +583,13 @@ ApplicationWindow {
                     onActivated: window.currentPage = 3
                 }
 
+                NavItem {
+                    label: "Monitoring"
+                    iconKind: "performance"
+                    selected: window.currentPage === 4
+                    onActivated: window.currentPage = 4
+                }
+
                 Item { Layout.fillHeight: true }
 
                 Text {
@@ -481,7 +635,8 @@ ApplicationWindow {
                             text: window.currentPage === 0 ? "System Overview"
                                 : window.currentPage === 1 ? "Performance Center"
                                 : window.currentPage === 2 ? "Battery Management"
-                                : "Hardware Monitoring"
+                                : window.currentPage === 3 ? "Hardware Monitoring"
+                                  : "Live Monitoring"
                             color: window.foreground
                             font.pixelSize: 27
                             font.weight: Font.DemiBold
@@ -519,7 +674,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
-                    visible: window.currentPage !== 3
+                    visible: window.currentPage !== 3 && window.currentPage !== 4
                     spacing: 14
 
                     MetricCard {
@@ -562,7 +717,7 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: performanceLayout.implicitHeight + 44
-                    visible: window.currentPage !== 2 && window.currentPage !== 3
+                    visible: window.currentPage !== 2 && window.currentPage !== 3 && window.currentPage !== 4
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -627,7 +782,7 @@ ApplicationWindow {
                     Layout.leftMargin: 28
                     Layout.rightMargin: 28
                     implicitHeight: batteryLayout.implicitHeight + 44
-                    visible: window.currentPage !== 1 && window.currentPage !== 3
+                    visible: window.currentPage !== 1 && window.currentPage !== 3 && window.currentPage !== 4
                     radius: 15
                     color: window.panel
                     border.color: window.borderColor
@@ -684,6 +839,64 @@ ApplicationWindow {
                     }
                 }
 
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 28
+                    Layout.rightMargin: 28
+                    spacing: 18
+                    visible: window.currentPage === 4
+
+                    Text {
+                        text: "LIVE PERFORMANCE HISTORY"
+                        color: window.muted
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        LiveGraph {
+                            heading: "CPU USAGE"
+                            samples: window.cpuHistory
+                            currentValue: hardware.cpuUsage
+                            graphColor: "#83aaff"
+                        }
+
+                        LiveGraph {
+                            heading: "NVIDIA GPU USAGE"
+                            samples: window.nvidiaHistory
+                            currentValue: hardware.gpuUsage
+                            graphColor: "#b49aff"
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        LiveGraph {
+                            heading: "INTEL GPU CLOCK"
+                            samples: window.intelHistory
+                            currentValue: hardware.intelGpuFrequency
+                            maximum: Math.max(1, parseFloat(hardware.intelGpuMaxFrequency) || 1300)
+                            graphColor: "#65cda6"
+                            unit: "MHz"
+                        }
+
+                        LiveGraph {
+                            heading: "RAM USAGE"
+                            samples: window.ramHistory
+                            currentValue: hardware.memory
+                            maximum: 100
+                            graphColor: "#f2bd73"
+                        }
+                    }
+
+                }
 
                 ColumnLayout {
                     Layout.fillWidth: true
