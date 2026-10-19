@@ -43,8 +43,14 @@ bool HardwareCapabilities::platformAttributeExists(const QString &name)
     for (const QFileInfo &device :
          devices.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
 
-        if (QFileInfo::exists(device.absoluteFilePath() + "/" + name))
+        const QString path = device.absoluteFilePath() + "/" + name;
+
+        QFile file(path);
+
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text) &&
+            !file.readAll().trimmed().isEmpty()) {
             return true;
+        }
     }
 
     return false;
@@ -71,7 +77,15 @@ bool HardwareCapabilities::hasKeyboardBacklight()
 
     for (const QString &name : leds.entryList(QDir::AllEntries |
                                                QDir::NoDotAndDotDot)) {
-        if (name.contains("kbd_backlight", Qt::CaseInsensitive))
+        if (!name.contains("kbd_backlight", Qt::CaseInsensitive))
+            continue;
+
+        bool valid = false;
+
+        readText(leds.absoluteFilePath(name) + "/brightness")
+            .toInt(&valid);
+
+        if (valid)
             return true;
     }
 
@@ -87,9 +101,18 @@ bool HardwareCapabilities::hasFanRpmMonitoring()
 
         const QDir sensor(hwmon.absoluteFilePath(name));
 
-        if (!sensor.entryList(
-                {"fan*_input"}, QDir::Files).isEmpty())
-            return true;
+        for (const QString &fileName :
+             sensor.entryList({"fan*_input"}, QDir::Files)) {
+
+            bool valid = false;
+
+            const int rpm = readText(
+                sensor.absoluteFilePath(fileName)
+            ).toInt(&valid);
+
+            if (valid && rpm >= 0)
+                return true;
+        }
     }
 
     return false;
