@@ -367,6 +367,7 @@ ApplicationWindow {
 
 
     component LiveGraph: Rectangle {
+        visible: window.readingAvailable(currentValue)
         id: graph
         property string heading: ""
         property var samples: []
@@ -1066,6 +1067,8 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        visible: window.readingAvailable(hardware.cpuUsage) ||
+                                 window.readingAvailable(hardware.gpuUsage)
                         spacing: 14
 
                         LiveGraph {
@@ -1085,6 +1088,8 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        visible: window.readingAvailable(hardware.intelGpuFrequency) ||
+                                 window.readingAvailable(hardware.memory)
                         spacing: 14
 
                         LiveGraph {
