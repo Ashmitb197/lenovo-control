@@ -102,7 +102,7 @@ Lenovo Control is primarily developed and tested on the Lenovo IdeaPad Gaming 3.
 
 Supported functionality depends on Linux kernel drivers, Lenovo firmware, and available sysfs interfaces.
 
-## Building v0.4.0
+## Installation on Arch Linux
 
 Clone the development branch:
 
@@ -111,33 +111,50 @@ git clone --branch dev/v0.4.0 https://github.com/Ashmitb197/lenovo-control.git
 cd lenovo-control
 ```
 
-Configure the native application:
+Build and install the Arch package:
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+makepkg -si
 ```
 
-Compile:
+The package installs:
+
+- Native Qt 6 dashboard
+- Python CLI and privileged Polkit helper
+- Hardware monitoring D-Bus service
+- KDE Plasma 6 widget
+- QML hardware bridge
+- Application launcher
+
+Enable the hardware backend:
 
 ```bash
+systemctl --user enable --now lenovo-control-backend.service
+```
+
+Launch the application:
+
+```bash
+lenovo-control-native
+```
+
+For KDE Plasma, open **Add Widgets**, search for **Lenovo Control**, and add it to your desktop or panel.
+
+### Manual development build
+
+Install the dependencies listed above, then run:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLENOVO_CONTROL_TRAY=OFF \
+  -DLENOVO_CONTROL_PLASMA=ON
+
 cmake --build build -j 4
-```
-
-Launch:
-
-```bash
 ./build/lenovo-control-native
 ```
 
-### Hardware control backend
-
-The native v0.4.0 interface currently reuses the existing Python `lenovo-control` command-line utility and its Polkit helper for privileged hardware changes.
-
-Building the native application does not automatically install this backend.
-
-Performance profile switching and battery conservation require the existing CLI and helper to be installed and configured correctly.
-
-Read-only hardware monitoring can work independently where the relevant system interfaces are accessible.
+A manual CMake build does not automatically install the Python CLI, Polkit helper, or systemd service. Full hardware-control functionality requires those components.
 
 ## Command-Line Interface
 
@@ -191,24 +208,24 @@ lenovo-control/
 
 ## Architecture
 
-The v0.4.0 application consists of two parts.
+Lenovo Control v0.4.0 uses the following components:
 
-**Native C++ and Qt frontend**
+- **Native dashboard:** C++20, Qt 6, and QML interface for hardware monitoring and controls.
+- **HardwareController:** Collects hardware readings and handles supported control operations.
+- **D-Bus backend:** Exposes hardware readings and performance-profile switching through `org.lenovo.Control`.
+- **QML bridge:** Connects the Plasma widget to the background service using asynchronous D-Bus calls.
+- **Plasma 6 widget:** Displays hardware readings and launches the dashboard.
+- **Python CLI and Polkit helper:** Provide command-line controls and privileged hardware operations.
 
-- Qt Quick / QML interface
-- C++ HardwareController
-- CPU and memory monitoring
-- NVIDIA GPU monitoring through asynchronous `nvidia-smi` queries
-- Battery health and cycle monitoring
-- Periodic hardware status updates
+The backend runs as a systemd user service:
 
-**Existing Python control backend**
-
-- Command-line utility
-- Privileged Polkit helper
-- Lenovo firmware interfaces for performance and battery conservation
-
-The native application currently depends on the existing CLI for hardware-changing operations.
+```text
+lenovo-control-backend.service
+    └── /usr/bin/lenovo-control-service
+          └── org.lenovo.Control
+                ├── Native dashboard
+                └── Plasma widget (QML bridge)
+```
 
 ## Settings and Preferences
 

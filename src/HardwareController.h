@@ -33,6 +33,7 @@ class HardwareController : public QObject {
 
 public:
     explicit HardwareController(QObject *parent = nullptr);
+    ~HardwareController() override;
 
     QString profile() const { return m_profile; }
     QString conservation() const { return m_conservation; }
@@ -105,6 +106,7 @@ private:
     QTimer *m_hardwareTimer = nullptr;
     QTimer *m_gpuTimer = nullptr;
     bool m_gpuQueryRunning = false;
+    QProcess *m_gpuProcess = nullptr;
 
     bool m_busy = false;
     QProcess *m_process = nullptr;

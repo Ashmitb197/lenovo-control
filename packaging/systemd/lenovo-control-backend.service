@@ -1,0 +1,11 @@
+[Unit]
+Description=Lenovo Control Hardware Backend
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/lenovo-control-service
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

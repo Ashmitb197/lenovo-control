@@ -11,3 +11,35 @@ src/
 # Track native C++ source files
 !/src/
 !/src/**
+
+# CMake build directories
+/build/
+/build-*/
+/install-test/
+/pkg/
+/srcdir/
+
+# Arch package artifacts
+*.pkg.tar.*
+*.tar.gz
+*.tar.zst
+
+# Local backups
+*.backup
+*.backup-*
+*.bak
+*.before-*
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Older nested development repository
+/lenovo-control/
+
+# Local release candidate
+/PKGBUILD.release-candidate

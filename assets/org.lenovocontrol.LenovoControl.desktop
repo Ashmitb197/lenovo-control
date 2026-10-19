@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lenovo Control
+Comment=Lenovo hardware management and monitoring
+Exec=lenovo-control-native
+Icon=computer-laptop
+Terminal=false
+Categories=Settings;HardwareSettings;
+StartupNotify=true

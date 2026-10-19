@@ -270,6 +270,7 @@ HardwareController::HardwareController(QObject *parent)
 
         m_gpuQueryRunning = true;
         auto *process = new QProcess(this);
+        m_gpuProcess = process;
 
         process->setProgram("nvidia-smi");
         process->setArguments({
@@ -297,6 +298,8 @@ HardwareController::HardwareController(QObject *parent)
             }
 
             m_gpuQueryRunning = false;
+            if (m_gpuProcess == process)
+                m_gpuProcess = nullptr;
             process->deleteLater();
         });
 
@@ -304,6 +307,8 @@ HardwareController::HardwareController(QObject *parent)
                 [this, process](QProcess::ProcessError error) {
             if (error == QProcess::FailedToStart) {
                 m_gpuQueryRunning = false;
+                if (m_gpuProcess == process)
+                    m_gpuProcess = nullptr;
                 process->deleteLater();
             }
         });
@@ -312,6 +317,31 @@ HardwareController::HardwareController(QObject *parent)
     });
 
     m_gpuTimer->start();
+}
+
+HardwareController::~HardwareController()
+{
+    if (m_hardwareTimer)
+        m_hardwareTimer->stop();
+
+    if (m_gpuTimer)
+        m_gpuTimer->stop();
+
+    if (m_gpuProcess &&
+        m_gpuProcess->state() != QProcess::NotRunning) {
+        m_gpuProcess->terminate();
+
+        if (!m_gpuProcess->waitForFinished(1000)) {
+            m_gpuProcess->kill();
+            m_gpuProcess->waitForFinished(1000);
+        }
+    }
+
+    if (m_process &&
+        m_process->state() != QProcess::NotRunning) {
+        m_process->kill();
+        m_process->waitForFinished(1000);
+    }
 }
 
 void HardwareController::refresh()
